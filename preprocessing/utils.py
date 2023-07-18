@@ -39,15 +39,39 @@ def is_empty_line(line_data, threshold=4000):
     return sum < threshold
 
 
-def split_and_shuffle_array(A, split_points):
-    chunks = []
-    start_idx = 0
-    for end_idx in split_points:
-        chunk = A[:, start_idx:end_idx]
-        chunks.append(chunk)
-        start_idx = end_idx
-    last_chunk = A[:, start_idx:]
-    chunks.append(last_chunk)
+def split_and_shuffle_array(arr, split_points):
+    chunks = split_array(arr, split_points)
     np.random.shuffle(chunks)
     shuffled_array = np.concatenate(chunks, axis=1)
     return shuffled_array
+
+
+def split_array(arr, split_points):
+    chunks = []
+    start_idx = 0
+    for end_idx in split_points:
+        chunk = arr[:, start_idx:end_idx]
+        chunks.append(chunk)
+        start_idx = end_idx
+    last_chunk = arr[:, start_idx:]
+    chunks.append(last_chunk)
+    return chunks
+
+
+def create_thumbnail(image_array, target_size):
+    image = Image.fromarray(image_array)
+    width, height = image.size
+    aspect_ratio = width / height
+
+    target_width, target_height = target_size
+    if aspect_ratio > 1:
+        target_height = int(target_width / aspect_ratio)
+    #else:
+    #    target_width = int(target_height * aspect_ratio)
+
+    resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
+    thumbnail = Image.new("L", target_size, 255)
+    left = (target_width - resized_image.width) // 2
+    top = (target_height - resized_image.height) // 2
+    thumbnail.paste(resized_image, (left, top))
+    return thumbnail

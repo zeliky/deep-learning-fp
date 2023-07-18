@@ -6,31 +6,10 @@ from preprocessing.dataset import full_data_set
 class UserDataset:
     def __init__(self, user_id):
         self.user_id = user_id
-        self.train_idx = []
-        self.validation_idx = []
-        self.test_idx = []
-        self.split_points = {
-            'train': {},
-            'validation': {}
-        }
-
-    def line_generator(self, run_type, img_type):
-        img = full_data_set.load_image(img_type, self.user_id)
-        if run_type == 'train':
-            lines_idx = self.train_idx
-        elif run_type == 'validation':
-            lines_idx = self.validation_idx
-
-        for i in range(10):
-            rand_line = random.randint(0, len(lines_idx) - 1)
-            line = img.get_line(rand_line)
-            rand_section = random.randint(1, len(self.split_points[run_type]) - 2)
-
-            start_idx = self.split_points[run_type][line][rand_section]
-            end_idx = self.split_points[run_type][line][rand_section + 1]
-            print(f"{start_idx}-{end_idx}")
-            chunk = line[:, start_idx:end_idx]
-            show_line(chunk)
+        self.train_lines = []
+        self.validation_lines = []
+        self.test_line = []
+        self.split_points = {}
 
     def warmup(self):
         e = ThreadPoolExecutor(max_workers=len(ALLOWED_TYPES))
@@ -39,7 +18,30 @@ class UserDataset:
 
     def split_dataset(self, train_split=0.8):
         bw_image = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
-        self.train_idx, self.validation_idx = select_train_validation_lines(bw_image)
+        self.train_lines, self.validation_lines = select_train_validation_lines(bw_image)
+
+    def get_letters(self, img_path, line_idx, normalized, target_size):
+        split_points = self._get_characters_split_points(line_idx)
+        user_file = full_data_set.load_image(img_path, self.user_id)
+        line = normalized_line(user_file.get_line(line_idx))
+        sub_images = split_array(line, split_points)
+        for img in sub_images:
+            # add bounding lines on right and left sides of the letter (should be kept to estimate the original size
+            # compared to line height)
+            img[:, 0] = 120
+            img[:, -1] = 120
+            thumbnail = create_thumbnail(sub_images, target_size)
+            # thumbnail.show()
+            np_img = np.asarray(thumbnail)
+            yield normalized_line(np_img) if normalized else np_img
+
+    def get_train_data(self, normalized=True, target_size=(25, 25)):
+        for img_type in TRAIN_TYPES:
+            if len(self.train_lines) == 0:
+                self.split_dataset()
+
+            for line_idx in self.train_lines:
+                self.get_letters(img_type, line_idx, normalized, target_size)
 
     def get_testing_data(self, random_shuffle_amount=3, chunks=16, normalized=True):
         for img_type in ALLOWED_TYPES:
@@ -50,25 +52,10 @@ class UserDataset:
                 sps = split_and_shuffle_array(base_line, chunks)
                 yield normalized_line(sps) if normalized else sps
 
-    def get_train_data(self, random_shuffle_amount=10, normalized=True):
-        split_points = {}
-        for img_type in TRAIN_TYPES:
-            img = full_data_set.load_image(img_type, self.user_id)
-            for idx in self.train_idx:
-                if idx not in split_points:
-                    split_points[idx] = self.find_split_points(idx)
-                base_line = img.get_line(idx)
-                # print("line {}".format(idx))
-                yield normalized_line(base_line) if normalized else base_line
-                for i in range(random_shuffle_amount):
-                    # print("line {} -shuffle {} ".format(idx, i))
-                    sps = split_and_shuffle_array(base_line, split_points[idx])
-                    yield normalized_line(sps) if normalized else sps
-
     def get_validation_data(self, random_shuffle_amount=10, chunks=32, normalized=True):
         for img_type in ALLOWED_TYPES:
             img = full_data_set.load_image(img_type, self.user_id)
-            for idx in self.validation_idx:
+            for idx in self.validation_lines:
                 base_line = img.get_line(idx)
                 # print("line {}".format(idx))
                 yield normalized_line(base_line) if normalized else base_line
@@ -78,19 +65,23 @@ class UserDataset:
                     yield normalized_line(sps) if normalized else sps
 
     def build_split_index(self):
-        for idx in self.train_idx:
-            self.split_points['train'][idx] = self.find_split_points(idx)
-        for idx in self.validation_idx:
-            self.split_points['validation'][idx] = self.find_split_points(idx)
+        for idx in self.train_lines:
+            self.split_points['train'][idx] = self._get_characters_split_points(idx)
+        for idx in self.validation_lines:
+            self.split_points['validation'][idx] = self._get_characters_split_points(idx)
 
-    def find_split_points(self, idx):
+    def _get_characters_split_points(self, idx):
+        if idx in self.split_points:
+            return self.split_points[idx]
+
         img = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
         line = normalized_line(img.get_line(idx))
 
         sum_vector = np.sum(line, axis=0)
         threshold = 0.05 * np.mean(sum_vector)
         split_points = []
-        section, las_split = None, None
+        section, last_split = None, None
+
 
         for idx, val in enumerate(sum_vector):
             value_type = 0 if val < threshold else 1
@@ -101,10 +92,28 @@ class UserDataset:
                 split_points.append(idx)
                 last_split = idx
                 section = value_type
+        self.split_points[idx] = split_points
         return split_points
 
 
 """
+
+    def get_train_data(self, random_shuffle_amount=10, normalized=True):
+        split_points = {}
+        for img_type in TRAIN_TYPES:
+            img = full_data_set.load_image(img_type, self.user_id)
+            for idx in self.train_lines:
+                if idx not in split_points:
+                    split_points[idx] = self._get_characters_split_points(idx)
+                base_line = img.get_line(idx)
+                # print("line {}".format(idx))
+                yield normalized_line(base_line) if normalized else base_line
+                for i in range(random_shuffle_amount):
+                    # print("line {} -shuffle {} ".format(idx, i))
+                    sps = split_and_shuffle_array(base_line, split_points[idx])
+                    yield normalized_line(sps) if normalized else sps
+                    
+                    
   def line_generator(self, line_indexes, random_shuffle_amount=10, chunks=32,normalized = True):
     for img_type in ALLOWED_TYPES:
       img = ds.load_image(img_type, self.user_id)
