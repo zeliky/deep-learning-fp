@@ -1,5 +1,5 @@
 # BASE_PATH  = '/gdrive/MyDrive/deep-learning/final-project/data-sets/'
-BASE_PATH = 'data-sets'
+BASE_PATH = 'data-sets/'
 ORIGINAL_IMAGES = BASE_PATH + "0_Images/"
 ROTATED_IMAGES = BASE_PATH + "1_ImagesRotated/"
 MEDIAN_BW_IMAGES = BASE_PATH + "2_ImagesMedianBW/"

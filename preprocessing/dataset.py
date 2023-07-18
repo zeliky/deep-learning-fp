@@ -1,10 +1,10 @@
-from constants import *
-from PIL import Image, ImageShow
+from constants.constants import *
+from PIL import Image
 from preprocessing.user_file import UserFile
 from preprocessing.metadata import MetaData
 
 from scipy.io import loadmat
-import re, os, math, random
+import re, os
 
 
 class DataSet:

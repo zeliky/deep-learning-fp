@@ -1,4 +1,4 @@
-from constants import *
+from constants.constants import *
 import random
 import numpy as np
 from PIL import Image
