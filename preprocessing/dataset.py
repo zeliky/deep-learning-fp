@@ -80,5 +80,5 @@ class DataSet:
 
 
 # -------------------------------------------------------------------------------
-
-ds = DataSet()
+#should be kept global so it will be shared by multi processes
+full_data_set = DataSet()

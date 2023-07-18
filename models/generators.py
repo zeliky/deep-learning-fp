@@ -1,8 +1,8 @@
 from constants.constants import TRAIN_TYPES, VALIDATE_TYPES
 from tensorflow.keras.utils import Sequence, to_categorical
 from preprocessing.user_dataset import UserDataset
-
-from preprocessing.dataset import ds
+import numpy as np
+from preprocessing.dataset import full_data_set
 
 
 class CustomDataGen(Sequence):
@@ -29,7 +29,7 @@ class CustomDataGen(Sequence):
         X_batch, Y_batch = [], []
         samples = 0
         while samples <= self.batch_size:
-            ds.reset()
+            full_data_set.reset()
             user_id = self.user_ids[self.cursor]
             uds = UserDataset(user_id)
             uds.warmup()
