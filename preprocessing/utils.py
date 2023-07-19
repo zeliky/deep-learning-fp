@@ -59,19 +59,23 @@ def split_array(arr, split_points):
 
 
 def create_thumbnail(image_array, target_size):
-    image = Image.fromarray(image_array)
-    width, height = image.size
-    aspect_ratio = width / height
+    height, width = image_array.shape
+    target_height, target_width = target_size
+    org_image = Image.fromarray(image_array)
 
-    target_width, target_height = target_size
-    if aspect_ratio > 1:
-        target_height = int(target_width / aspect_ratio)
-    #else:
-    #    target_width = int(target_height * aspect_ratio)
+    canvas = Image.new("L", (height, height), 0)
+    if width < height:
+        left = (height - width) // 2
+        top = 0
+        canvas.paste(org_image, (left, top))
+    else:
+        scale_factor = height / width
+        s_width = round(scale_factor * width)
+        s_height = round(scale_factor * height)
+        resized_image = org_image.resize((s_width, s_height), Image.ANTIALIAS)
+        left = (height - s_width) // 2
+        top = 0
+        canvas.paste(resized_image, (left, top))
 
-    resized_image = image.resize((target_width, target_height), Image.ANTIALIAS)
-    thumbnail = Image.new("L", target_size, 255)
-    left = (target_width - resized_image.width) // 2
-    top = (target_height - resized_image.height) // 2
-    thumbnail.paste(resized_image, (left, top))
+    thumbnail = canvas.resize((target_width, target_height), Image.ANTIALIAS)
     return thumbnail

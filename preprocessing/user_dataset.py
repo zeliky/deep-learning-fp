@@ -3,6 +3,8 @@ from preprocessing.utils import *
 from preprocessing.dataset import full_data_set
 
 
+
+
 class UserDataset:
     def __init__(self, user_id):
         self.user_id = user_id
@@ -28,12 +30,12 @@ class UserDataset:
         for img in sub_images:
             # add bounding lines on right and left sides of the letter (should be kept to estimate the original size
             # compared to line height)
-            img[:, 0] = 120
-            img[:, -1] = 120
-            thumbnail = create_thumbnail(sub_images, target_size)
-            # thumbnail.show()
+            img[:, 0] = 100
+            img[:, -1] = 100
+
+            thumbnail = create_thumbnail(img, target_size)
             np_img = np.asarray(thumbnail)
-            yield normalized_line(np_img) if normalized else np_img
+            yield np_img if normalized else np_img
 
     def get_train_data(self, normalized=True, target_size=(25, 25)):
         for img_type in TRAIN_TYPES:
@@ -42,6 +44,7 @@ class UserDataset:
 
             for line_idx in self.train_lines:
                 self.get_letters(img_type, line_idx, normalized, target_size)
+                break
 
     def get_testing_data(self, random_shuffle_amount=3, chunks=16, normalized=True):
         for img_type in ALLOWED_TYPES:
@@ -82,7 +85,6 @@ class UserDataset:
         split_points = []
         section, last_split = None, None
 
-
         for idx, val in enumerate(sum_vector):
             value_type = 0 if val < threshold else 1
             if section is None:
@@ -94,46 +96,3 @@ class UserDataset:
                 section = value_type
         self.split_points[idx] = split_points
         return split_points
-
-
-"""
-
-    def get_train_data(self, random_shuffle_amount=10, normalized=True):
-        split_points = {}
-        for img_type in TRAIN_TYPES:
-            img = full_data_set.load_image(img_type, self.user_id)
-            for idx in self.train_lines:
-                if idx not in split_points:
-                    split_points[idx] = self._get_characters_split_points(idx)
-                base_line = img.get_line(idx)
-                # print("line {}".format(idx))
-                yield normalized_line(base_line) if normalized else base_line
-                for i in range(random_shuffle_amount):
-                    # print("line {} -shuffle {} ".format(idx, i))
-                    sps = split_and_shuffle_array(base_line, split_points[idx])
-                    yield normalized_line(sps) if normalized else sps
-                    
-                    
-  def line_generator(self, line_indexes, random_shuffle_amount=10, chunks=32,normalized = True):
-    for img_type in ALLOWED_TYPES:
-      img = ds.load_image(img_type, self.user_id)
-      for idx in line_indexes:
-        base_line = img.get_line(idx)
-        #print("line {}".format(idx))
-        yield normalized_line(base_line) if normalized else base_line
-        for i in range(random_shuffle_amount):
-          #print("line {} -shuffle {} ".format(idx, i))
-          sps = split_and_shuffle_array(base_line,chunks)
-          yield normalized_line(sps) if normalized else sps
-
-def split_and_shuffle_array(A, num_chunks):
-  num_rows, num_cols = A.shape
-  chunk_size, remaining_cols = divmod(num_cols, num_chunks)
-  chunks = np.split(A[:, :-remaining_cols], num_chunks,axis=1)
-  if remaining_cols:
-    chunks.append( A[:, -remaining_cols:])
-
-  np.random.shuffle(chunks)
-  shuffled_array = np.concatenate(chunks,axis=1)
-  return shuffled_array
-"""
