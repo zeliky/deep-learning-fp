@@ -17,6 +17,11 @@ class UserFile:
         y_range = (self.metadata.top_test_area, self.metadata.bottom_test_area)
         return self.data[y_range[0]:y_range[1], :]
 
+    def get_test_line_idx(self):
+        for i in range(1, self.metadata.total_lines):
+            if self.is_test_line(i):
+                return i
+
     def get_all_lines(self, threshold=2000):
         for i in range(1, self.metadata.total_lines):
             yield self.get_line(i)

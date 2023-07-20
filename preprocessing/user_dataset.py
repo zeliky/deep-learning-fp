@@ -8,7 +8,7 @@ class UserDataset:
         self.user_id = user_id
         self.train_lines = []
         self.validation_lines = []
-        self.test_line = []
+        self.test_line = None
         self.split_points = {}
 
     def warmup(self):
@@ -20,33 +20,36 @@ class UserDataset:
     def split_dataset(self, train_split=0.8):
         bw_image = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
         self.train_lines, self.validation_lines = select_train_validation_lines(bw_image)
-
+        self.test_line = bw_image.get_test_line_idx()
     def get_train_data(self, target_size):
-        print(self.train_lines)
+        print(f"train lines {self.train_lines}")
         for img_path in ALLOWED_TYPES:
             print(img_path)
             for line_idx in self.train_lines:
-                #print(f"get_train_data line {self.user_id} - {img_path}::{line_idx}")
+                #print(f"get_train_data user:{self.user_id} -  line {img_path}::{line_idx}")
                 sequence = self.get_letters(img_path, line_idx, target_size)
                 yield sequence
         return
 
     def get_validation_data(self, target_size):
+        print(f"validation lines {self.validation_lines}")
         for line_idx in self.validation_lines:
             #print(f"get_validation_data line {ORIGINAL_IMAGES}::{line_idx}")
-            sequence = self.get_letters(ORIGINAL_IMAGES, line_idx, target_size)
-            yield sequence
+            yield self.get_letters(ORIGINAL_IMAGES, line_idx, target_size)
         return
 
     def get_testing_data(self, target_size):
-        return self.get_letters(ORIGINAL_IMAGES, self.test_line, target_size)
+        print(f"testing line {self.test_line}")
+        #print(f"get_testing_data user:{self.user_id} line {ORIGINAL_IMAGES}::{self.test_line}")
+        yield self.get_letters(ORIGINAL_IMAGES, self.test_line, target_size)
+        return
 
     def get_letters(self, img_path, line_idx, target_size):
         split_points = self._get_characters_split_points(line_idx)
         user_file = full_data_set.load_image(img_path, self.user_id)
         line = normalized_line(user_file.get_line(line_idx))
         #print(f'line {img_path}::{line_idx}')
-        show_line(line)
+        #show_line(line)
 
         sub_images = split_array(line, split_points)
         sequence = []
@@ -66,6 +69,9 @@ class UserDataset:
             self.split_points['train'][idx] = self._get_characters_split_points(idx)
         for idx in self.validation_lines:
             self.split_points['validation'][idx] = self._get_characters_split_points(idx)
+
+        idx = self.test_line
+        self.split_points['test'][idx] = self._get_characters_split_points(idx)
 
     def _get_characters_split_points(self, idx):
         if idx in self.split_points:
