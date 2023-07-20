@@ -24,25 +24,28 @@ class UserDataset:
     def get_train_data(self, target_size):
         print(self.train_lines)
         for img_path in ALLOWED_TYPES:
+            print(img_path)
             for line_idx in self.train_lines:
-                print(f"get_train_data line {img_path}::{line_idx}")
+                #print(f"get_train_data line {self.user_id} - {img_path}::{line_idx}")
                 sequence = self.get_letters(img_path, line_idx, target_size)
                 yield sequence
+        return
 
     def get_validation_data(self, target_size):
         for line_idx in self.validation_lines:
-            print(f"get_validation_data line {ORIGINAL_IMAGES}::{line_idx}")
+            #print(f"get_validation_data line {ORIGINAL_IMAGES}::{line_idx}")
             sequence = self.get_letters(ORIGINAL_IMAGES, line_idx, target_size)
             yield sequence
+        return
 
     def get_testing_data(self, target_size):
-        sequence = self.get_letters(ORIGINAL_IMAGES, self.test_line, target_size)
+        return self.get_letters(ORIGINAL_IMAGES, self.test_line, target_size)
 
     def get_letters(self, img_path, line_idx, target_size):
         split_points = self._get_characters_split_points(line_idx)
         user_file = full_data_set.load_image(img_path, self.user_id)
         line = normalized_line(user_file.get_line(line_idx))
-        print(f'line {img_path}::{line_idx}')
+        #print(f'line {img_path}::{line_idx}')
         show_line(line)
 
         sub_images = split_array(line, split_points)

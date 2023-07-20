@@ -9,7 +9,7 @@ num_epochs=3
 input_shape = (50,50)
 
 
-data_generator_collection = DataGeneratorsCollection(user_ids, random_shuffle_amount=0)
+data_generator_collection = DataGeneratorsCollection(input_shape=input_shape, random_shuffle_amount=0)
 
 train_gen = TrainDataGenerator(user_ids, batch_size, data_generator_collection, input_shape)
 valid_gen = ValidationDataGenerator(user_ids, batch_size, data_generator_collection, input_shape)
