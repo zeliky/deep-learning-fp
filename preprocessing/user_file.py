@@ -5,8 +5,9 @@ import numpy as np
 class UserFile:
     def __init__(self, im, metadata):
         # image_arr = np.asarray(im.getchannel(0).getdata())
-        channel = 0 if im.mode == 'L' else 2
-        image_arr = np.asarray(im.getchannel(channel))
+        if im.mode != 'L':
+            im = im.convert(mode='L')
+        image_arr = np.asarray(im.getchannel(0))
         # image_arr = image_arr.reshape(im.height, im.width)
         # print(image_arr.shape)
         self.data = image_arr[metadata.min_y: metadata.max_y, :]

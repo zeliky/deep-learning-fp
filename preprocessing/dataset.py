@@ -9,10 +9,10 @@ import re, os
 
 class DataSet:
     def __init__(self):
-        self.images = {}
         self.user_files = {}
         self.metadata = {}
         self._build_index()
+        self.reset()
 
     def reset(self):
         self.images = {}
@@ -49,9 +49,6 @@ class DataSet:
         reg = re.search(r'\d+', path)
         return int(reg.group())
 
-    def _extract_lines(self, raw_data, image_metadata):
-        for line in range(1, image_metadata.total_lines):
-            image_metadata.peaks_indices[line - 1:line + 1]
 
     def _build_index(self):
         directory_files = os.listdir(ORIGINAL_IMAGES)

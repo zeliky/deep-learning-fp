@@ -1,7 +1,20 @@
 from constants.constants import *
-import random
+import matplotlib.pyplot as plt
+import random, math
 import numpy as np
 from PIL import Image
+
+
+def show_line(line_data):
+    image = Image.fromarray(line_data.astype(np.uint8))
+    image.show()
+
+
+def is_empty_line(line_data, threshold=4000):
+    values = line_data.flatten()
+    sum = values[values < 50].sum()
+    # print("is_empty_line {}".format(sum))
+    return sum < threshold
 
 
 def normalized_line(line_data):
@@ -24,19 +37,7 @@ def select_train_validation_lines(user_image, train_split=0.8):
 
     random.shuffle(rows)
     split_idx = int(len(rows) * train_split)
-    return rows[0:split_idx], rows[split_idx:]
-
-
-def show_line(line_data):
-    image = Image.fromarray(line_data.astype(np.uint8))
-    image.show()
-
-
-def is_empty_line(line_data, threshold=4000):
-    values = line_data.flatten()
-    sum = values[values < 50].sum()
-    # print("is_empty_line {}".format(sum))
-    return sum < threshold
+    return (rows[0:split_idx], rows[split_idx:])
 
 
 def split_and_shuffle_array(arr, split_points):
@@ -72,10 +73,27 @@ def create_thumbnail(image_array, target_size):
         scale_factor = height / width
         s_width = round(scale_factor * width)
         s_height = round(scale_factor * height)
-        resized_image = org_image.resize((s_width, s_height), Image.ANTIALIAS)
+        resized_image = org_image.resize((s_width, s_height), Image.NEAREST)
         left = (height - s_width) // 2
         top = 0
         canvas.paste(resized_image, (left, top))
 
-    thumbnail = canvas.resize((target_width, target_height), Image.ANTIALIAS)
+    thumbnail = canvas.resize((target_width, target_height), Image.NEAREST)
     return thumbnail
+
+
+def show_sequence(the_images):
+    l = len(the_images)
+    dim = math.ceil(math.sqrt(l))
+    plt.clf()
+    fig, axs = plt.subplots(dim, dim, figsize=(10, 10))
+    k = l - 1
+    for i in range(0, dim):
+        for j in range(0, dim):
+            img = the_images[k]
+            axs[i, j].imshow(img, cmap='gray')
+            axs[i, j].axis('off')
+            k -= 1
+            if k == 0:
+                plt.show()
+                return

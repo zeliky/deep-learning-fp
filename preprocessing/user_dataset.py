@@ -3,8 +3,6 @@ from preprocessing.utils import *
 from preprocessing.dataset import full_data_set
 
 
-
-
 class UserDataset:
     def __init__(self, user_id):
         self.user_id = user_id
@@ -17,55 +15,48 @@ class UserDataset:
         e = ThreadPoolExecutor(max_workers=len(ALLOWED_TYPES))
         futures = [e.submit(full_data_set.load_image, t, self.user_id) for t in ALLOWED_TYPES]
         results = [f.result() for f in futures]
+        self.split_dataset()
 
     def split_dataset(self, train_split=0.8):
         bw_image = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
         self.train_lines, self.validation_lines = select_train_validation_lines(bw_image)
 
-    def get_letters(self, img_path, line_idx, normalized, target_size):
+    def get_train_data(self, target_size):
+        print(self.train_lines)
+        for img_path in ALLOWED_TYPES:
+            for line_idx in self.train_lines:
+                print(f"get_train_data line {img_path}::{line_idx}")
+                sequence = self.get_letters(img_path, line_idx, target_size)
+                yield sequence
+
+    def get_validation_data(self, target_size):
+        for line_idx in self.validation_lines:
+            print(f"get_validation_data line {ORIGINAL_IMAGES}::{line_idx}")
+            sequence = self.get_letters(ORIGINAL_IMAGES, line_idx, target_size)
+            yield sequence
+
+    def get_testing_data(self, target_size):
+        sequence = self.get_letters(ORIGINAL_IMAGES, self.test_line, target_size)
+
+    def get_letters(self, img_path, line_idx, target_size):
         split_points = self._get_characters_split_points(line_idx)
         user_file = full_data_set.load_image(img_path, self.user_id)
         line = normalized_line(user_file.get_line(line_idx))
+        print(f'line {img_path}::{line_idx}')
+        show_line(line)
+
         sub_images = split_array(line, split_points)
+        sequence = []
         for img in sub_images:
             # add bounding lines on right and left sides of the letter (should be kept to estimate the original size
             # compared to line height)
             img[:, 0] = 100
             img[:, -1] = 100
-
-            thumbnail = create_thumbnail(img, target_size)
-            np_img = np.asarray(thumbnail)
-            yield np_img if normalized else np_img
-
-    def get_train_data(self, normalized=True, target_size=(25, 25)):
-        for img_type in TRAIN_TYPES:
-            if len(self.train_lines) == 0:
-                self.split_dataset()
-
-            for line_idx in self.train_lines:
-                self.get_letters(img_type, line_idx, normalized, target_size)
-                break
-
-    def get_testing_data(self, random_shuffle_amount=3, chunks=16, normalized=True):
-        for img_type in ALLOWED_TYPES:
-            img = full_data_set.load_image(img_type, self.user_id)
-            base_line = img.get_testing_line()
-            yield normalized_line(base_line) if normalized else base_line
-            for i in range(random_shuffle_amount):
-                sps = split_and_shuffle_array(base_line, chunks)
-                yield normalized_line(sps) if normalized else sps
-
-    def get_validation_data(self, random_shuffle_amount=10, chunks=32, normalized=True):
-        for img_type in ALLOWED_TYPES:
-            img = full_data_set.load_image(img_type, self.user_id)
-            for idx in self.validation_lines:
-                base_line = img.get_line(idx)
-                # print("line {}".format(idx))
-                yield normalized_line(base_line) if normalized else base_line
-                for i in range(random_shuffle_amount):
-                    # print("line {} -shuffle {} ".format(idx, i))
-                    sps = split_and_shuffle_array(base_line, chunks)
-                    yield normalized_line(sps) if normalized else sps
+            if not is_empty_line(img):
+                thumbnail = create_thumbnail(img, target_size)
+                np_img = np.asarray(thumbnail)
+                sequence.append(np_img)
+        return sequence
 
     def build_split_index(self):
         for idx in self.train_lines:
@@ -90,7 +81,7 @@ class UserDataset:
             if section is None:
                 section = value_type
                 last_split = idx
-            elif section != value_type and idx - last_split > 10:
+            elif section != value_type and idx - last_split > 8:
                 split_points.append(idx)
                 last_split = idx
                 section = value_type
