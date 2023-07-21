@@ -112,7 +112,7 @@ def pad_sequences(max_length, sequences, image_height, image_width, num_channels
 
         num_padding = max_length - seq_len
         if num_padding > 0:
-            padded_sequence = np.concatenate(
+            sequence = np.concatenate(
                 [sequence, np.zeros((num_padding, image_height, image_width, num_channels))])
-            padded_sequences.append(padded_sequence)
+        padded_sequences.append(sequence)
     return np.array(padded_sequences)

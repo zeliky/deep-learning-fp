@@ -59,11 +59,11 @@ class UserDataset:
             # compared to line height)
             img[:, 0] = 100
             img[:, -1] = 100
-            if not is_empty_line(img):
-                thumbnail = create_thumbnail(img, target_size)
-                np_im = np.array(thumbnail, dtype=np.float32) / 255
-                np_img = np_im.reshape(target_size[0], target_size[1], 1)
-                sequence.append(np_img)
+
+            thumbnail = create_thumbnail(img, target_size)
+            np_im = np.array(thumbnail, dtype=np.float32) / 255
+            np_img = np_im.reshape(target_size[0], target_size[1], 1)
+            sequence.append(np_img)
         return sequence
 
     def build_split_index(self):

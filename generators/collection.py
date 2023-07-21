@@ -24,6 +24,14 @@ class DataGeneratorsCollection:
             self.users_ds[user_id] = uds
         return self.users_ds[user_id]
 
+    def train_lines_amount(self, user_id):
+        uds = self.get_user_ds(user_id)
+        return len(uds.train_lines)
+
+    def validation_lines_amount(self, user_id):
+        uds = self.get_user_ds(user_id)
+        return len(uds.validation_lines)
+
     def get_train_generator(self, user_id):
         if user_id not in self.active_generators['train']:
             uds = self.get_user_ds(user_id)

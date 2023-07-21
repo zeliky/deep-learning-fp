@@ -18,6 +18,9 @@ class BaseDataGenerator(Sequence):
     def next_sequence(self):
         raise 'Not implemented'
 
+    def total_lines(self):
+        raise 'Not implemented'
+
     def get_random_user(self):
         # print(f"users len{len(self.user_ids)}")
         if len(self.active_user_ids):
@@ -42,13 +45,17 @@ class BaseDataGenerator(Sequence):
 
         padded_sequences = pad_sequences(self.options.max_sequence_length, sequences, self.options.image_height,
                                          self.options.image_width, self.options.num_channels)
+
         batch_sequences = np.array(padded_sequences)
         batch_labels = np.array(labels)
         return batch_sequences, batch_labels
 
     def __len__(self):
-        print(len(self.active_user_ids) * (1 + self.generators.random_shuffle_amount) * len(ALLOWED_TYPES))
-        return len(self.active_user_ids) * (1 + self.generators.random_shuffle_amount) * len(ALLOWED_TYPES)
+        sfl_count = self.generators.random_shuffle_amount if self.generators.random_shuffle_amount > 0 else 1
+        sample = self.total_lines() * sfl_count * len(ALLOWED_TYPES)
+        epoch_len = math.floor(sample / self.options.batch_size)
+        print(f'epoch_len={epoch_len}')
+        return epoch_len
 
     def on_epoch_end(self):
         self.generators.reset_generators()
@@ -61,10 +68,16 @@ class TrainDataGenerator(BaseDataGenerator):
         sequence = None
         try:
             sequence = next(self.generators.get_train_generator(user_id))
+            return user_id, sequence
         except StopIteration:
             self.generators.deactivate_generator('train', user_id)
+        return user_id, None
 
-        return user_id, sequence
+    def total_lines(self):
+        total_lines = 0
+        for user_id in self.active_user_ids:
+            total_lines += self.generators.train_lines_amount(user_id)
+        return total_lines
 
 
 class ValidationDataGenerator(BaseDataGenerator):
@@ -73,9 +86,16 @@ class ValidationDataGenerator(BaseDataGenerator):
         user_id = self.get_random_user()
         try:
             sequence = next(self.generators.get_validation_generator(user_id))
+            return user_id, sequence
         except StopIteration:
             self.generators.deactivate_generator('valid', user_id)
-        return user_id, sequence
+        return user_id, None
+
+    def total_lines(self):
+        total_lines = 0
+        for user_id in self.active_user_ids:
+            total_lines += self.generators.validation_lines_amount(user_id)
+        return total_lines
 
 
 class TestDataGenerator(BaseDataGenerator):
@@ -84,6 +104,11 @@ class TestDataGenerator(BaseDataGenerator):
         user_id = self.get_random_user()
         try:
             sequence = next(self.generators.get_test_generator(user_id))
+            return user_id, sequence
         except StopIteration:
             self.generators.deactivate_generator('test', user_id)
-        return user_id, sequence
+        return user_id, None
+
+    def total_lines(self):
+        total_lines = 0
+        return len(self.active_user_ids)
