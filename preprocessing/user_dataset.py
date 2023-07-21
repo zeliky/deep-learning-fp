@@ -21,12 +21,13 @@ class UserDataset:
         bw_image = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
         self.train_lines, self.validation_lines = select_train_validation_lines(bw_image)
         self.test_line = bw_image.get_test_line_idx()
+
     def get_train_data(self, target_size):
         print(f"train lines {self.train_lines}")
         for img_path in ALLOWED_TYPES:
             print(img_path)
             for line_idx in self.train_lines:
-                #print(f"get_train_data user:{self.user_id} -  line {img_path}::{line_idx}")
+                # print(f"get_train_data user:{self.user_id} -  line {img_path}::{line_idx}")
                 sequence = self.get_letters(img_path, line_idx, target_size)
                 yield sequence
         return
@@ -34,13 +35,13 @@ class UserDataset:
     def get_validation_data(self, target_size):
         print(f"validation lines {self.validation_lines}")
         for line_idx in self.validation_lines:
-            #print(f"get_validation_data line {ORIGINAL_IMAGES}::{line_idx}")
+            # print(f"get_validation_data line {ORIGINAL_IMAGES}::{line_idx}")
             yield self.get_letters(ORIGINAL_IMAGES, line_idx, target_size)
         return
 
     def get_testing_data(self, target_size):
         print(f"testing line {self.test_line}")
-        #print(f"get_testing_data user:{self.user_id} line {ORIGINAL_IMAGES}::{self.test_line}")
+        # print(f"get_testing_data user:{self.user_id} line {ORIGINAL_IMAGES}::{self.test_line}")
         yield self.get_letters(ORIGINAL_IMAGES, self.test_line, target_size)
         return
 
@@ -48,8 +49,8 @@ class UserDataset:
         split_points = self._get_characters_split_points(line_idx)
         user_file = full_data_set.load_image(img_path, self.user_id)
         line = normalized_line(user_file.get_line(line_idx))
-        #print(f'line {img_path}::{line_idx}')
-        #show_line(line)
+        # print(f'line {img_path}::{line_idx}')
+        # show_line(line)
 
         sub_images = split_array(line, split_points)
         sequence = []
@@ -60,7 +61,8 @@ class UserDataset:
             img[:, -1] = 100
             if not is_empty_line(img):
                 thumbnail = create_thumbnail(img, target_size)
-                np_img = np.asarray(thumbnail)
+                np_im = np.array(thumbnail, dtype=np.float32) / 255
+                np_img = np_im.reshape(target_size[0], target_size[1], 1)
                 sequence.append(np_img)
         return sequence
 

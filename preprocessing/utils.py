@@ -97,3 +97,22 @@ def show_sequence(the_images):
             if k == 0:
                 plt.show()
                 return
+
+
+def pad_sequences(max_length, sequences, image_height, image_width, num_channels):
+    # Pad sequences to have the same length (pad with zero images)
+    padded_sequences = []
+    for sequence in sequences:
+        seq_len = len(sequence)
+        if seq_len == 0:
+            continue
+        if seq_len > max_length:
+            sequence = sequence[:max_length]
+            seq_len = len(sequence)
+
+        num_padding = max_length - seq_len
+        if num_padding > 0:
+            padded_sequence = np.concatenate(
+                [sequence, np.zeros((num_padding, image_height, image_width, num_channels))])
+            padded_sequences.append(padded_sequence)
+    return np.array(padded_sequences)

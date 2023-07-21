@@ -1,4 +1,6 @@
 from tensorflow.keras.utils import Sequence, to_categorical
+from preprocessing.utils import *
+from models.options import ModelOptions
 import numpy as np
 from constants.constants import *
 from generators.collection import DataGeneratorsCollection
@@ -6,12 +8,12 @@ from generators.exceptions import FinalStopIteration
 
 
 class BaseDataGenerator(Sequence):
-    def __init__(self, user_ids, batch_size, generators: DataGeneratorsCollection):
+    def __init__(self, user_ids, model_options: ModelOptions, generators: DataGeneratorsCollection):
         self.active_user_ids = [i for i in user_ids]
         self.user_ids = [i for i in user_ids]
-        self.batch_size = batch_size
         self.generators = generators
         self.num_classes = max(user_ids) + 1
+        self.options = model_options
 
     def next_sequence(self):
         raise 'Not implemented'
@@ -23,25 +25,26 @@ class BaseDataGenerator(Sequence):
         raise FinalStopIteration()
 
     def __getitem__(self, index):
-        X_batch, Y_batch = [], []
-        samples = 0
-        while samples < self.batch_size:
+        labels = []
+        sequences = []
+        for _ in range(self.options.batch_size):
             try:
                 user_id, sequence = self.next_sequence()
                 if sequence is None:
                     # print(f"user  {user_id} has finished his dataset ")
                     self.active_user_ids.remove(user_id)
                     continue
-
-                # print(f"sequence shape {len(sequence)}")
-                X_batch.append(sequence)
-                Y_batch.append(user_id)
-                samples += 1
+                labels.append(user_id)
+                sequences.append(sequence)
             except FinalStopIteration:
                 print("NO MORE DATA!")
                 break
 
-        return X_batch, to_categorical(Y_batch, num_classes=self.num_classes)
+        padded_sequences = pad_sequences(self.options.max_sequence_length, sequences, self.options.image_height,
+                                         self.options.image_width, self.options.num_channels)
+        batch_sequences = np.array(padded_sequences)
+        batch_labels = np.array(labels)
+        return batch_sequences, batch_labels
 
     def __len__(self):
         print(len(self.active_user_ids) * (1 + self.generators.random_shuffle_amount) * len(ALLOWED_TYPES))

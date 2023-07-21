@@ -1,11 +1,12 @@
 from preprocessing.user_dataset import UserDataset
+from models.options import ModelOptions
 
 
 class DataGeneratorsCollection:
-    def __init__(self, input_shape, random_shuffle_amount=0):
+    def __init__(self, options: ModelOptions):
         self.active_generators = None
-        self.random_shuffle_amount = random_shuffle_amount
-        self.input_shape = input_shape
+        self.random_shuffle_amount = options.random_shuffle_amount
+        self.input_shape = (options.image_height,options.image_width)
         self.users_ds = {}
         self.reset_generators()
 
