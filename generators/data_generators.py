@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras.utils import Sequence, to_categorical
 from preprocessing.utils import *
 from models.options import ModelOptions
@@ -43,19 +44,23 @@ class BaseDataGenerator(Sequence):
                 print("NO MORE DATA!")
                 break
 
+        if len(sequences) == 0:
+            return tf.convert_to_tensor([]), tf.convert_to_tensor([])
         padded_sequences = pad_sequences(self.options.max_sequence_length, sequences, self.options.image_height,
                                          self.options.image_width, self.options.num_channels)
 
         batch_sequences = np.array(padded_sequences)
         batch_labels = np.array(labels)
-        return batch_sequences, batch_labels
+        print(f"Batch Shape: {batch_sequences.shape}, Label Shape: {batch_labels.shape}")
+
+        return tf.convert_to_tensor(batch_sequences), tf.convert_to_tensor(batch_labels)
 
     def __len__(self):
         sfl_count = self.generators.random_shuffle_amount if self.generators.random_shuffle_amount > 0 else 1
-        sample = self.total_lines() * sfl_count * len(ALLOWED_TYPES)
-        epoch_len = math.floor(sample / self.options.batch_size)
+        samples = self.total_lines() * sfl_count * len(ALLOWED_TYPES)
+        epoch_len = samples // self.options.batch_size
         print(f'epoch_len={epoch_len}')
-        return epoch_len
+        return max(1, epoch_len)
 
     def on_epoch_end(self):
         self.generators.reset_generators()

@@ -55,6 +55,9 @@ class UserDataset:
         sub_images = split_array(line, split_points)
         sequence = []
         for img in sub_images:
+            pix_sum = img.sum()
+            if pix_sum < 10000:  # %2 of 255*50*50
+                continue
             # add bounding lines on right and left sides of the letter (should be kept to estimate the original size
             # compared to line height)
             img[:, 0] = 100

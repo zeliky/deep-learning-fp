@@ -5,7 +5,8 @@ from preprocessing.utils import *
 from models.cnn_lstm import CnnLstmAttentionModel as Model
 from tensorflow import expand_dims
 
-user_ids = [1, 5]
+user_ids = [1, 2,3,4,5,6,7,8,9]
+user_ids = [1]
 num_classes = max(user_ids) + 1
 
 num_epochs = 3
@@ -16,7 +17,7 @@ model_options = ModelOptions(
     image_height=50,
     image_width=50,
     num_channels=1,
-    max_sequence_length=32,
+    max_sequence_length=40,
     random_shuffle_amount=0
 )
 
@@ -30,8 +31,8 @@ model = classifier.get_model()
 
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 model.summary()
-history = model.fit(expand_dims(train_gen, axis=-1), epochs=num_epochs, batch_size=model_options.batch_size,
-                    validation_data=expand_dims(valid_gen, axis=-1), verbose=1)
+history = model.fit(train_gen, epochs=num_epochs, batch_size=model_options.batch_size,
+                    validation_data=valid_gen, verbose=1)
 
 
 def sample_inputs(gen):
