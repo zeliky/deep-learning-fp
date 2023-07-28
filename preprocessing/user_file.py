@@ -1,10 +1,12 @@
 from PIL import Image, ImageShow
 import numpy as np
+from preprocessing.utils import *
 
 
 class UserFile:
     def __init__(self, im, metadata):
         # image_arr = np.asarray(im.getchannel(0).getdata())
+        self.im = im.copy()
         if im.mode != 'L':
             im = im.convert(mode='L')
         image_arr = np.asarray(im.getchannel(0))

@@ -5,12 +5,24 @@ import numpy as np
 from PIL import Image
 
 
+def image_dots(img_data, threshold=50):
+    height, width = img_data.shape
+    for i in range(height):
+        line = ''
+        for j in range(width):
+            if img_data[i, j] < threshold:
+                line += ' '
+            else:
+                line += '.'
+        print(line)
+
+
 def show_line(line_data):
     image = Image.fromarray(line_data.astype(np.uint8))
     image.show()
 
 
-def is_empty_line(line_data, threshold=4000):
+def is_empty_line(line_data, threshold=2000):
     values = line_data.flatten()
     sum = values[values < 50].sum()
     # print("is_empty_line {}".format(sum))
@@ -64,19 +76,30 @@ def create_thumbnail(image_array, target_size):
     target_height, target_width = target_size
     org_image = Image.fromarray(image_array)
 
+    random_scale_w = random.uniform(0.6, 1.2)
+    random_scale_h = random.uniform(0.6, 1.2)
+    random_rotate = random.randint(-20, 20)
+    org_image_rs = org_image.resize((int(width * random_scale_w), int(height * random_scale_h)), Image.NEAREST)
+    org_image_ro = org_image_rs.rotate(random_rotate, Image.NEAREST, expand=True)
+
     canvas = Image.new("L", (height, height), 0)
     if width < height:
         left = (height - width) // 2
         top = 0
-        canvas.paste(org_image, (left, top))
+        canvas.paste(org_image_ro, (left, top))
     else:
         scale_factor = height / width
         s_width = round(scale_factor * width)
         s_height = round(scale_factor * height)
-        resized_image = org_image.resize((s_width, s_height), Image.NEAREST)
+        resized_image = org_image_ro.resize((s_width, s_height), Image.NEAREST)
         left = (height - s_width) // 2
         top = 0
         canvas.paste(resized_image, (left, top))
+        del resized_image
+
+    del org_image_rs
+    del org_image_ro
+    del org_image
 
     thumbnail = canvas.resize((target_width, target_height), Image.NEAREST)
     return thumbnail
@@ -97,6 +120,18 @@ def show_sequence(the_images):
             if k == 0:
                 plt.show()
                 return
+
+
+def show_triplet(triplets):
+    plt.clf()
+    fig, axs = plt.subplots(1, 3, figsize=(5, 5))
+
+    for k in range(0, 3):
+        img = triplets[k]
+        axs[k].imshow(img, cmap='gray')
+        axs[k].axis('off')
+
+    plt.show()
 
 
 def pad_sequences(max_length, sequences, image_height, image_width, num_channels):

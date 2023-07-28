@@ -8,7 +8,7 @@ from generators.collection import DataGeneratorsCollection
 from generators.exceptions import FinalStopIteration
 
 
-class BaseDataGenerator(Sequence):
+class BaseSequenceGenerator(Sequence):
     def __init__(self, user_ids, model_options: ModelOptions, generators: DataGeneratorsCollection):
         self.active_user_ids = [i for i in user_ids]
         self.user_ids = [i for i in user_ids]
@@ -67,7 +67,7 @@ class BaseDataGenerator(Sequence):
         self.active_user_ids = [i for i in self.user_ids]
 
 
-class TrainDataGenerator(BaseDataGenerator):
+class TrainSequenceGenerator(BaseSequenceGenerator):
     def next_sequence(self):
         user_id = self.get_random_user()
         sequence = None
@@ -85,7 +85,7 @@ class TrainDataGenerator(BaseDataGenerator):
         return total_lines
 
 
-class ValidationDataGenerator(BaseDataGenerator):
+class ValidationSequenceGenerator(BaseSequenceGenerator):
     def next_sequence(self):
         sequence = None
         user_id = self.get_random_user()
@@ -103,7 +103,7 @@ class ValidationDataGenerator(BaseDataGenerator):
         return total_lines
 
 
-class TestDataGenerator(BaseDataGenerator):
+class TestSequenceGenerator(BaseSequenceGenerator):
     def next_sequence(self):
         sequence = None
         user_id = self.get_random_user()

@@ -1,8 +1,9 @@
-from generators.data_generators import TrainDataGenerator, DataGeneratorsCollection, ValidationDataGenerator, \
-    TestDataGenerator
-from models.options import ModelOptions
+from generators.sequence_generators import TrainSequenceGenerator, DataGeneratorsCollection, ValidationSequenceGenerator, \
+    TestSequenceGenerator
+from models.network_configs import ModelOptions
 from preprocessing.utils import *
 from models.cnn_lstm import CnnLstmAttentionModel as Model
+from models.simple_cnn import SimpleCnnModel as Model
 from tensorflow import expand_dims
 
 user_ids = [1, 2,3,4,5,6,7,8,9]
@@ -23,9 +24,9 @@ model_options = ModelOptions(
 
 data_generator_collection = DataGeneratorsCollection(options=model_options)
 
-train_gen = TrainDataGenerator(user_ids, model_options, data_generator_collection)
-valid_gen = ValidationDataGenerator(user_ids, model_options, data_generator_collection)
-test_gen = TestDataGenerator(user_ids, model_options, data_generator_collection)
+train_gen = TrainSequenceGenerator(user_ids, model_options, data_generator_collection)
+valid_gen = ValidationSequenceGenerator(user_ids, model_options, data_generator_collection)
+test_gen = TestSequenceGenerator(user_ids, model_options, data_generator_collection)
 classifier = Model(model_options)
 model = classifier.get_model()
 
