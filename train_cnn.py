@@ -12,7 +12,7 @@ checkpoint = ModelCheckpoint(filepath, monitor='val_accuracy', verbose=1, save_b
 callbacks_list = [checkpoint]
 
 num_epochs = 100
-user_ids = [i for i in range(12, 22)]
+user_ids = [i for i in range(1, 10)]
 
 model_options = ModelOptions(
     num_classes=len(user_ids),
@@ -21,7 +21,7 @@ model_options = ModelOptions(
     image_width=150,
     num_channels=1,
     max_sequence_length=40,
-    random_shuffle_amount=2
+    random_shuffle_amount=32
 )
 
 layers_options = {
@@ -59,7 +59,6 @@ model = sm.get_model(layers_options)
 
 ####################### IF NEED TO LOAD PREVIOUS MODEL ############################
 filepath = MODEL_CHECKPOINT_PATH + 'model-30-0.46.hdf5'
-
 
 if filepath is not None:
     opt = Adam(learning_rate=1e-5)

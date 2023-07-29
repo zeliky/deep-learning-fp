@@ -7,7 +7,7 @@ class ModelOptions:
         self.num_channels = kwargs.get('num_channels', 1)
         self.max_sequence_length = kwargs.get('max_sequence_length', 32)
         self.random_shuffle_amount = kwargs.get('random_shuffle_amount', 0)
-        self.lstm_units = kwargs.get('lstm_units', 5)
+        #self.lstm_units = kwargs.get('lstm_units', 5)
         self.max_embedding_samples = kwargs.get('max_embedding_samples', 5)
 
     def __repr__(self):

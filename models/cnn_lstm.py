@@ -1,47 +1,49 @@
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import LSTM, Dense, TimeDistributed, Input, AdditiveAttention, Flatten
 import tensorflow as tf
-import numpy as np
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, LSTM, Dense, Attention, TimeDistributed
 from models.options import ModelOptions
 
 
 class CnnLstmAttentionModel:
-    def __init__(self, options: ModelOptions):
-        self.options = options
+    def __init__(self, options: ModelOptions, embedding_model, layer_name):
+        self.model_options = options
+        self.embedding_model = self._convert_to_embedding_model(embedding_model, layer_name)
 
-    def get_model(self):
-        input_shape = (self.options.max_sequence_length, self.options.image_height, self.options.image_width,
-                       self.options.num_channels)
-        inputs = Input(shape=input_shape)
 
-        # create CNN layers for each image in the sequence
-        image_sequences = tf.unstack(inputs, axis=1)
-        # print(f'{image_sequences.shape')
-        cnn_outputs = [self.create_cnn_layers(image) for image in image_sequences]
-        # print(f'{len(cnn_outputs)}x{cnn_outputs[0]}')
 
-        # going all output into input seq * len(feature vecotr) output of cnn
-        # perform as embedding vector (each image is a letter)
-        cnn_outputs = tf.stack(cnn_outputs, axis=1)
+    def get_model(self, options):
+        input_layer = Input(shape=(self.model_options.max_sequence_length, self.model_options.image_height,
+                                   self.model_options.image_width, 1))
 
-        # print(f'{cnn_outputs.shape}')
-        x = LSTM(self.options.lstm_units, return_sequences=True)(cnn_outputs)
+        # 2) Use the CustomCNN as the embedding
+        self.embedding_model.trainable = False
 
-        # attension layer that will help to extreact important letters to classify
-        x = Attention()([x, x])
+        # Apply CustomCNN to each image in the sequence
+        sequence_embedding = TimeDistributed(self.embedding_model)(input_layer)
 
-        # Softmax layer for classification
-        outputs = Dense(self.options.num_classes, activation='softmax')(x)
+        # Flatten the output of the CustomCNN model
+        flattened_sequence = TimeDistributed(tf.keras.layers.Flatten())(sequence_embedding)
 
-        model = Model(inputs=inputs, outputs=outputs)
+        # LSTM Layer
+        lstm_output = LSTM(options['lstm_units'])(flattened_sequence)
+
+        # Additive Attention Layer
+        attention_output = AdditiveAttention()([lstm_output, lstm_output])
+
+        # Flattening the output for the Dense layer
+        attention_output_flat = Flatten()(attention_output)
+
+        dense_output = Dense(options['dense_units'], activation='relu')(attention_output_flat)
+
+        # 5) Classification Layer
+        output = Dense(options['num_classes'], activation='softmax')(dense_output)
+
+        # Build the model
+        model = Model(inputs=input_layer, outputs=output)
+
         return model
 
-    def create_cnn_layers(self, inputs):
-        x = Conv2D(32, (3, 3), activation='relu')(inputs)
-        x = MaxPooling2D((2, 2))(x)
-        x = Conv2D(64, (3, 3), activation='relu')(x)
-        x = MaxPooling2D((2, 2))(x)
-        x = Conv2D(128, (3, 3), activation='relu')(x)
-        x = MaxPooling2D((2, 2))(x)
-        x = Flatten()(x)
-        return x
+    def _convert_to_embedding_model(self, base_model, layer_name):
+        return Model(base_model.inputs, base_model.get_layer(layer_name).output)
+
+

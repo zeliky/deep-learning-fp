@@ -1,3 +1,4 @@
+from constants.constants import *
 from models.options import ModelOptions
 from preprocessing.user_dataset import UserDataset
 from tensorflow.keras.utils import Sequence,to_categorical
@@ -36,7 +37,7 @@ class BaseLetterGenerator(Sequence):
     def get_letters_generator(self, user_id, is_anchor=False):
         key = f"anc{user_id}" if is_anchor else str(user_id)
         if key not in self.generators:
-            print(f"new generator for {user_id} anchor{is_anchor}")
+            #print(f"new generator for {user_id} anchor{is_anchor}")
             uds = self.get_user_ds(user_id)
             self.generators[key] = uds.random_letters_generator(mode=self.mode, target_size=self.input_shape,
                                                                   original_only=is_anchor, random_shuffle_amount=self.random_shuffle_amount)

@@ -22,7 +22,7 @@ def show_line(line_data):
     image.show()
 
 
-def is_empty_line(line_data, threshold=2000):
+def is_empty_line(line_data, threshold=5000):
     values = line_data.flatten()
     sum = values[values < 50].sum()
     # print("is_empty_line {}".format(sum))
@@ -110,14 +110,14 @@ def show_sequence(the_images):
     dim = math.ceil(math.sqrt(l))
     plt.clf()
     fig, axs = plt.subplots(dim, dim, figsize=(10, 10))
-    k = l - 1
+    k = 0
     for i in range(0, dim):
         for j in range(0, dim):
             img = the_images[k]
             axs[i, j].imshow(img, cmap='gray')
             axs[i, j].axis('off')
-            k -= 1
-            if k == 0:
+            k += 1
+            if k == l:
                 plt.show()
                 return
 
@@ -133,6 +133,17 @@ def show_triplet(triplets):
 
     plt.show()
 
+
+def pad_sequence(max_sequence_length, sequence, image_height, image_width, num_channels):
+    sequence = np.asarray(sequence)
+    padding_size = max_sequence_length - len(sequence)
+    if padding_size > 0:
+        padding_shape = (padding_size, image_height, image_width, num_channels)
+        padding_images = np.zeros(padding_shape)
+        padded_sequence = np.concatenate([sequence, padding_images], axis=0)
+    else:
+        padded_sequence = np.asarray(sequence)
+    return padded_sequence
 
 def pad_sequences(max_length, sequences, image_height, image_width, num_channels):
     # Pad sequences to have the same length (pad with zero images)
