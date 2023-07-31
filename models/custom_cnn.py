@@ -32,6 +32,6 @@ class CustomCNN:
             model.add(Dropout(options['dropout_rate']))
 
         # Output Layer
-        model.add(Dense(options['num_classes'], activation='softmax'))
-
+        if not options['skip_classification']:
+            model.add(Dense(options['num_classes'], activation='softmax'))
         return model

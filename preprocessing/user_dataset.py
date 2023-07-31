@@ -53,7 +53,7 @@ class UserDataset:
             np_im = np.array(thumbnail, dtype=np.float32) / 255
             np_img = np_im.reshape(target_size[0], target_size[1], 1)
             sequence.append(np_img)
-        return pad_sequence(max_sequence_length, sequence,target_size[0], target_size[1], 1)
+        return pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
     def random_line_generator(self, mode, max_sequence_length, target_size, sample_from_lines_amount=None,
                               sequence_length=None, original_only=False):
@@ -79,8 +79,7 @@ class UserDataset:
                 np_im = np.array(thumbnail, dtype=np.float32) / 255
                 np_img = np_im.reshape(target_size[0], target_size[1], 1)
                 sequence.append(np_img)
-            yield pad_sequence(max_sequence_length, sequence,target_size[0], target_size[1], 1)
-
+            yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
     def random_letters_generator(self, mode, target_size, random_shuffle_amount=1, original_only=False):
         while True:
@@ -92,7 +91,8 @@ class UserDataset:
             line_idx = random.choice(lines)
             line = normalized_line(user_file.get_line(line_idx))
             split_points = self._get_characters_split_points(line_idx)
-            (x, y, w, h) = random.choice(split_points)
+            split_index = random.randint(0, len(split_points) - 1)
+            (x, y, w, h) = split_points[split_index]
 
             img = line[:, x:x + w]
             thumbnails = [create_thumbnail(img, target_size) for _ in range(random_shuffle_amount)]
@@ -100,7 +100,17 @@ class UserDataset:
                 np_im = np.array(thumbnail, dtype=np.float32) / 255
                 np_img = np_im.reshape(target_size[0], target_size[1], 1)
                 # print(f"{img_path}: u:{self.user_id} l:{line_idx} x:{x}-{x+w} rand:{i}")
-                yield np_img
+                yield np_img, img_path, line_idx, split_index
+
+    def get_letter(self, img_path, line_idx, split_index, target_size):
+        user_file = full_data_set.load_image(img_path, self.user_id)
+        line = normalized_line(user_file.get_line(line_idx))
+        split_points = self._get_characters_split_points(line_idx)
+        (x, y, w, h) = split_points[split_index]
+        img = line[:, x:x + w]
+        thumbnail = create_thumbnail(img, target_size)
+        np_im = np.array(thumbnail, dtype=np.float32) / 255
+        return np_im.reshape(target_size[0], target_size[1], 1)
 
     def _get_lines_ids_set(self, mode):
         if mode == MODE_TRAIN:

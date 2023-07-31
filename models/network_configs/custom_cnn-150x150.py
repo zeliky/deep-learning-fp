@@ -12,5 +12,5 @@ layers_options = {
     'fc_units': [150, model_options.num_classes],  # number of units in each fully connected layer
     'fc_activation': 'relu',  # activation function for the fully connected layers
     'dropout_rate': 0.1,  # dropout rate
-    'num_classes':model_options.num_classes   # number of classes in the output layer
+    'num_classes': model_options.num_classes   # number of classes in the output layer
 }

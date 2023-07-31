@@ -1,7 +1,7 @@
 from constants.constants import *
 from models.options import ModelOptions
 from preprocessing.user_dataset import UserDataset
-from tensorflow.keras.utils import Sequence,to_categorical
+from tensorflow.keras.utils import Sequence, to_categorical
 import tensorflow as tf
 import random
 import numpy as np
@@ -37,10 +37,11 @@ class BaseLetterGenerator(Sequence):
     def get_letters_generator(self, user_id, is_anchor=False):
         key = f"anc{user_id}" if is_anchor else str(user_id)
         if key not in self.generators:
-            #print(f"new generator for {user_id} anchor{is_anchor}")
+            # print(f"new generator for {user_id} anchor{is_anchor}")
             uds = self.get_user_ds(user_id)
             self.generators[key] = uds.random_letters_generator(mode=self.mode, target_size=self.input_shape,
-                                                                  original_only=is_anchor, random_shuffle_amount=self.random_shuffle_amount)
+                                                                original_only=is_anchor,
+                                                                random_shuffle_amount=self.random_shuffle_amount)
         return self.generators[key]
 
 
@@ -55,8 +56,8 @@ class LettersGenerator(BaseLetterGenerator):
         random_shuffle_amount = self.options.random_shuffle_amount
         types = len(ALLOWED_TYPES)
 
-        total_batches = (types * lines * users * letters* random_shuffle_amount) // self.options.batch_size
-        #print(f"LettersGenerator __len__ {total_batches}")
+        total_batches = (types * lines * users * letters * random_shuffle_amount) // self.options.batch_size
+        # print(f"LettersGenerator __len__ {total_batches}")
         return total_batches
 
     def __getitem__(self, index):
@@ -64,7 +65,7 @@ class LettersGenerator(BaseLetterGenerator):
         users_count = len(self.user_ids)
         for s in range(self.options.batch_size):
             user_id = random.choice(self.user_ids)
-            letter = next(self.get_letters_generator(user_id))
+            letter, _, _, _ = next(self.get_letters_generator(user_id))
             batch.append(letter)
             labels.append(to_categorical(self.id_to_class[user_id], num_classes=users_count))
             # labels.append(self.id_to_class[user_id]+1)
@@ -72,7 +73,7 @@ class LettersGenerator(BaseLetterGenerator):
         if len(batch) == 0:
             batch = np.zeros((self.options.batch_size, self.options.image_height, self.options.image_width, 1))
             labels = np.zeros((self.options.batch_size,))
-        #print(f"LettersGenerator batch: {len(batch)}")
+        # print(f"LettersGenerator batch: {len(batch)}")
         return np.asarray(batch), np.asarray(labels)
 
 
@@ -81,24 +82,28 @@ class TripletsGenerator(BaseLetterGenerator):
         super().__init__(mode, user_ids, options)
 
     def __getitem__(self, index):
-        batch, labels = [], []
+        anchors, positives, negatives, labels = [], [], [], []
         for _ in range(self.options.batch_size):
             positive_user, negative_user_id = random.sample(self.user_ids, 2)
             for triplet in self.get_triplets(positive_user, negative_user_id):
                 if triplet is None:
                     positive_user, negative_user_id = random.sample(self.user_ids, 2)
                     continue
-                batch.append(triplet)
-                labels.append(positive_user)
+                anchor, positive, negative = triplet
+                anchors.append(anchor)
+                positives.append(positive)
+                negatives.append(negative)
+                # it allways returns 0 since the real loss is calculated internally (triplet loss)
+                labels.append(np.zeros(2))
 
-        return np.asarray(batch), np.asarray(labels)
+        return (np.asarray(anchors), np.asarray(positives), np.asarray(negatives)), np.asarray(labels)
 
     def get_triplets(self, positive_user, negative_user_id):
-        anchor_generator = self.get_letters_generator(positive_user, True)
-        positive_generator = self.get_letters_generator(positive_user, False)
-        negative_generator = self.get_letters_generator(negative_user_id, False)
-        anc_letter = next(anchor_generator)
-        positive_letter = next(positive_generator)
-        negative_letter = next(negative_generator)
+        anc_letter, img_path, line_idx, split_index = next(self.get_letters_generator(positive_user, True))
+        uds = self.get_user_ds(positive_user)
+        filtered = list(filter(lambda im_type: im_type != img_path, ALLOWED_TYPES))
+        img_path = random.choice(filtered)
+        positive_letter = uds.get_letter(img_path, line_idx, split_index, self.input_shape)
+        negative_letter, _, _, _ = next(self.get_letters_generator(negative_user_id, False))
         if anc_letter is not None and positive_letter is not None and negative_letter is not None:
             yield [anc_letter, positive_letter, negative_letter]
