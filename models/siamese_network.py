@@ -8,104 +8,52 @@ from tensorflow.keras import Input
 
 # based on  https://pyimagesearch.com/2023/03/06/triplet-loss-with-keras-and-tensorflow/
 
-class SiameseModel(Model):
+class SiameseModel:
     def __init__(self, options: ModelOptions):
         super().__init__()
-        self.siameseNetwork = SiameseNetwork(options=options).get_model()
-        self.margin = options.alpha
-        self.loss_tracker = Mean(name="loss")
-
-    def _compute_distance(self, inputs):
-        (anchor, positive, negative) = inputs
-        # embed the images using the siamese network
-        embeddings = self.siameseNetwork((anchor, positive, negative))
-        anchor_embedding = embeddings[0]
-        positive_embedding = embeddings[1]
-        negative_embedding = embeddings[2]
-        # calculate the anchor to positive and negative distance
-        ap_distance = tf.reduce_sum(
-            tf.square(anchor_embedding - positive_embedding), axis=-1
-        )
-        an_distance = tf.reduce_sum(
-            tf.square(anchor_embedding - negative_embedding), axis=-1
-        )
-
-        # return the distances
-        return ap_distance, an_distance
-
-    def _compute_loss(self, ap_distance, an_distance):
-        loss = ap_distance - an_distance
-        loss = tf.maximum(loss + self.margin, 0.0)
-        return loss
-
-    def call(self, inputs):
-        # compute the distance between the anchor and positive,
-        # negative images
-        (ap_distance, an_distance) = self._compute_distance(inputs)
-        return ap_distance, an_distance
-
-    def train_step(self, inputs):
-        with tf.GradientTape() as tape:
-            # compute the distance between the anchor and positive,
-            # negative images
-            (ap_distance, an_distance) = self._compute_distance(inputs)
-            # calculate the loss of the siamese network
-            loss = self._compute_loss(ap_distance, an_distance)
-        # compute the gradients and optimize the model
-        gradients = tape.gradient(
-            loss,
-            self.siameseNetwork.trainable_variables)
-        self.optimizer.apply_gradients(
-            zip(gradients, self.siameseNetwork.trainable_variables)
-        )
-        # update the metrics and return the loss
-        self.loss_tracker.update_state(loss)
-        return {"loss": self.loss_tracker.result()}
-
-    def test_step(self, inputs):
-        # compute the distance between the anchor and positive,
-        # negative images
-        (ap_distance, an_distance) = self._compute_distance(inputs)
-        # calculate the loss of the siamese network
-        loss = self._compute_loss(ap_distance, an_distance)
-
-        # update the metrics and return the loss
-        self.loss_tracker.update_state(loss)
-        return {"loss": self.loss_tracker.result()}
-
-    @property
-    def metrics(self):
-        return [self.loss_tracker]
-
-
-class SiameseNetwork:
-
-    def __init__(self, options: ModelOptions):
         self.options = options
-        self.input_shape = (options.image_height, options.image_width, 1)
-        self.embedding_model = EmbeddingModel(self.input_shape, options.embedding_dim).get_model()
+        self.alpha = options.alpha
+        input_shape = (options.image_height, options.image_width, 1)
+        self.embedding = EmbeddingModel().get_model(input_shape, self.options.embedding_dim)
 
     def get_model(self):
-        anchor_input = Input(self.input_shape, name='anchor_input')
-        positive_input = Input(self.input_shape, name='positive_input')
-        negative_input = Input(self.input_shape, name='negative_input')
+        # triplet_input = Input(shape=(self.options.image_height, self.options.image_width, 1), name='triplet_input')
 
-        encoded_anchor = self.embedding_model(anchor_input)
-        encoded_positive = self.embedding_model(positive_input)
-        encoded_negative = self.embedding_model(negative_input)
+        input_shape = ( self.options.image_height,  self.options.image_width, 1)
+        anchor_input = Input(input_shape, name="anchor_input")
+        positive_input = Input(input_shape, name="positive_input")
+        negative_input = Input(input_shape, name="negative_input")
 
-        outputs = tf.concat([encoded_anchor, encoded_positive, encoded_negative], axis=1)
-        siamese_net = Model(inputs=[anchor_input, positive_input, negative_input], outputs=outputs)
+        # anchor_input = Lambda(lambda x: x[0])(triplet_input)
+        # positive_input = Lambda(lambda x: x[1])(triplet_input)
+        # negative_input = Lambda(lambda x: x[2])(triplet_input)
 
-        return siamese_net
+        enc_anchor = self.embedding(anchor_input)
+        enc_positive = self.embedding(positive_input)
+        enc_negative = self.embedding(negative_input)
 
-    def get_embedding_model(self):
-        return self.embedding_model
+        loss_layer = TripletLossLayer(alpha=self.alpha, name='triplet_loss_layer')(
+            [enc_anchor, enc_positive, enc_negative])
+
+        model = Model(inputs=[anchor_input, positive_input, negative_input], outputs=loss_layer)
+        return model
+
+    def get_embedding(self):
+        return self.embedding
 
 
-def _reshape_inputs(data):
-    x, y = data
+class TripletLossLayer(Layer):
+    def __init__(self, alpha, **kwargs):
+        self.alpha = alpha
+        super(TripletLossLayer, self).__init__(**kwargs)
 
-    # Reshape the input data
-    anchor, positive, negative = tf.unstack(x, axis=1)
-    return (anchor, positive, negative)
+    def triplet_loss(self, inputs):
+        anchor, positive, negative = inputs
+        p_dist = K.sum(K.square(anchor - positive), axis=-1)
+        n_dist = K.sum(K.square(anchor - negative), axis=-1)
+        return K.sum(K.maximum(p_dist - n_dist + self.alpha, 0), axis=0)
+
+    def call(self, inputs):
+        loss = self.triplet_loss(inputs)
+        self.add_loss(loss)
+        return loss
