@@ -1,32 +1,25 @@
-from models.custom_cnn import CustomCNN
-from tensorflow.keras.models import Model
-import tensorflow as tf
-from models.embedding import EmbeddingModel
 from models.options import ModelOptions
-from tensorflow.keras.metrics import Mean
+from tensorflow.keras.models import Model
+from models.options import ModelOptions
 from tensorflow.keras import Input
+from tensorflow.keras.layers import Layer
+from keras import backend as K
 
 # based on  https://pyimagesearch.com/2023/03/06/triplet-loss-with-keras-and-tensorflow/
 
 class SiameseModel:
-    def __init__(self, options: ModelOptions):
+    def __init__(self, options: ModelOptions, embedding):
         super().__init__()
         self.options = options
         self.alpha = options.alpha
-        input_shape = (options.image_height, options.image_width, 1)
-        self.embedding = EmbeddingModel().get_model(input_shape, self.options.embedding_dim)
+        input_shape = (self.options.image_height, self.options.image_width, 1)
+        self.embedding = embedding
 
     def get_model(self):
-        # triplet_input = Input(shape=(self.options.image_height, self.options.image_width, 1), name='triplet_input')
-
-        input_shape = ( self.options.image_height,  self.options.image_width, 1)
+        input_shape = (self.options.image_height, self.options.image_width, 1)
         anchor_input = Input(input_shape, name="anchor_input")
         positive_input = Input(input_shape, name="positive_input")
         negative_input = Input(input_shape, name="negative_input")
-
-        # anchor_input = Lambda(lambda x: x[0])(triplet_input)
-        # positive_input = Lambda(lambda x: x[1])(triplet_input)
-        # negative_input = Lambda(lambda x: x[2])(triplet_input)
 
         enc_anchor = self.embedding(anchor_input)
         enc_positive = self.embedding(positive_input)

@@ -49,6 +49,7 @@ def select_train_validation_lines(user_image, train_split=0.8):
 
     random.shuffle(rows)
     split_idx = int(len(rows) * train_split)
+    # print((rows[0:split_idx], rows[split_idx:]))
     return (rows[0:split_idx], rows[split_idx:])
 
 
@@ -144,6 +145,7 @@ def pad_sequence(max_sequence_length, sequence, image_height, image_width, num_c
     else:
         padded_sequence = np.asarray(sequence)
     return padded_sequence
+
 
 def pad_sequences(max_length, sequences, image_height, image_width, num_channels):
     # Pad sequences to have the same length (pad with zero images)

@@ -1,3 +1,6 @@
+from constants.constants import *
+from generators.letters_generators import TripletsGenerator
+from preprocessing.utils import show_triplet
 def display_triplets():
 
   train_gen = TripletsGenerator(MODE_TRAIN, user_ids, model_options)

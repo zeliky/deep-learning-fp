@@ -45,52 +45,17 @@ class BaseLetterGenerator(Sequence):
         return self.generators[key]
 
 
-class BaseLetterGenerator(Sequence):
-    def __init__(self, mode, user_ids, options: ModelOptions):
-        self.options = options
-        self.user_ids = [i for i in user_ids]
-        self.id_to_class = {user_id: i for i, user_id in enumerate(user_ids)}
-        self.input_shape = (options.image_height, options.image_width)
-        self.random_shuffle_amount = options.random_shuffle_amount
-        self.users_ds = {}
-        self.generators = {}
-        self.mode = mode
-
-    def __len__(self):
-        return self.options.max_embedding_samples
-
-    def on_epoch_end(self):
-        self.generators = {}
-
-    def reset_generators(self):
-        self.generators = {}
-
-    def get_user_ds(self, user_id):
-        if user_id not in self.users_ds:
-            uds = UserDataset(user_id)
-            uds.warmup()
-            self.users_ds[user_id] = uds
-        return self.users_ds[user_id]
-
-    def get_letters_generator(self, user_id, is_anchor=False):
-        key = f"anc{user_id}" if is_anchor else str(user_id)
-        if key not in self.generators:
-            # print(f"new generator for {user_id} anchor{is_anchor}")
-            uds = self.get_user_ds(user_id)
-            self.generators[key] = uds.random_letters_generator(mode=self.mode, target_size=self.input_shape,
-                                                                original_only=is_anchor,
-                                                                random_shuffle_amount=self.random_shuffle_amount)
-        return self.generators[key]
-
-
 class LettersGenerator(BaseLetterGenerator):
-    def __init__(self, mode, user_ids, options: ModelOptions):
+    def __init__(self, mode, user_ids, options: ModelOptions, total_users):
         super().__init__(mode, user_ids, options)
+        self.total_users = total_users
 
     def __len__(self):
         lines = 20
+        # lines=10
         users = len(self.user_ids)
         letters = 50
+        # letters =30
         random_shuffle_amount = self.options.random_shuffle_amount
         types = len(ALLOWED_TYPES)
 
@@ -103,10 +68,11 @@ class LettersGenerator(BaseLetterGenerator):
         users_count = len(self.user_ids)
         for s in range(self.options.batch_size):
             user_id = random.choice(self.user_ids)
+            # print(f"__getitem__{user_id}")
             letter, _, _, _ = next(self.get_letters_generator(user_id))
             batch.append(letter)
-            labels.append(to_categorical(self.id_to_class[user_id], num_classes=users_count))
-            # labels.append(self.id_to_class[user_id]+1)
+            labels.append(to_categorical(self.id_to_class[user_id], num_classes=self.total_users))
+            # print(labels)
 
         if len(batch) == 0:
             batch = np.zeros((self.options.batch_size, self.options.image_height, self.options.image_width, 1))
