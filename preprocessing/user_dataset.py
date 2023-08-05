@@ -12,27 +12,27 @@ class UserDataset:
         self.train_lines = []
         self.validation_lines = []
         self.all_lines = []
+        self.normalized_lines = {}
         self.test_line = None
         self.split_points = {}
         self.min_width = 20
         self.min_colored_pixels = 500 * 255
 
-    def warmup(self):
-        e = ThreadPoolExecutor(max_workers=len(ALLOWED_TYPES))
-        futures = [e.submit(full_data_set.load_image, t, self.user_id) for t in ALLOWED_TYPES]
+    def warmup(self, load_types=ALLOWED_TYPES, train_split=0.8, shuffle=True):
+        e = ThreadPoolExecutor(max_workers=len(load_types))
+        futures = [e.submit(full_data_set.load_image, t, self.user_id) for t in load_types]
         results = [f.result() for f in futures]
-        self.split_dataset()
+        self.split_dataset(train_split, shuffle)
 
-    def split_dataset(self, train_split=0.8):
+    def split_dataset(self, train_split, shuffle):
         bw_image = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
-        self.train_lines, self.validation_lines = select_train_validation_lines(bw_image)
+        self.train_lines, self.validation_lines = select_train_validation_lines(bw_image, train_split, shuffle)
         self.test_line = bw_image.get_test_line_idx()
         self.all_lines = sorted(self.train_lines + self.validation_lines)
 
     def get_letters(self, img_path, line_idx, target_size):
         split_points = self._get_characters_split_points(line_idx)
-        user_file = full_data_set.load_image(img_path, self.user_id)
-        line = normalized_line(user_file.get_line(line_idx))
+        line = self._get_normalized_line(img_path, line_idx)
         for (x, y, w, h) in split_points:
             img = line[:, x:x + w]
             # print(f"get_letter shape {img.shape}")
@@ -44,8 +44,7 @@ class UserDataset:
 
     def get_line_as_sequence(self, img_path, line_idx, max_sequence_length, target_size):
         sequence = []
-        user_file = full_data_set.load_image(img_path, self.user_id)
-        line = normalized_line(user_file.get_line(line_idx))
+        line = self._get_normalized_line(img_path, line_idx)
         split_points = self._get_characters_split_points(line_idx)
         for (x, y, w, h) in split_points:
             img = line[:, x:x + w]
@@ -60,8 +59,6 @@ class UserDataset:
         while True:
             types = ALLOWED_TYPES if not original_only else [ORIGINAL_IMAGES]
             img_path = random.choice(types)
-            user_file = full_data_set.load_image(img_path, self.user_id)
-
             lines = self._get_lines_ids_set(mode)
             if sample_from_lines_amount is None:
                 sample_from_lines_amount = random.randint(1, len(lines) - 1)
@@ -71,7 +68,7 @@ class UserDataset:
             sequence = []
             for _ in range(sequence_length):
                 line_idx = random.choice(selected_lines)
-                line = normalized_line(user_file.get_line(line_idx))
+                line = self._get_normalized_line(img_path, line_idx)
                 split_points = self._get_characters_split_points(line_idx)
                 (x, y, w, h) = random.choice(split_points)
                 img = line[:, x:x + w]
@@ -85,11 +82,9 @@ class UserDataset:
         while True:
             types = ALLOWED_TYPES if not original_only else [ORIGINAL_IMAGES]
             img_path = random.choice(types)
-            user_file = full_data_set.load_image(img_path, self.user_id)
-
             lines = self._get_lines_ids_set(mode)
             line_idx = random.choice(lines)
-            line = normalized_line(user_file.get_line(line_idx))
+            line = self._get_normalized_line(img_path,line_idx)
             split_points = self._get_characters_split_points(line_idx)
             split_index = random.randint(0, len(split_points) - 1)
             (x, y, w, h) = split_points[split_index]
@@ -103,8 +98,7 @@ class UserDataset:
                 yield np_img, img_path, line_idx, split_index
 
     def get_letter(self, img_path, line_idx, split_index, target_size):
-        user_file = full_data_set.load_image(img_path, self.user_id)
-        line = normalized_line(user_file.get_line(line_idx))
+        line = self._get_normalized_line(img_path, line_idx)
         split_points = self._get_characters_split_points(line_idx)
         (x, y, w, h) = split_points[split_index]
         img = line[:, x:x + w]
@@ -122,8 +116,7 @@ class UserDataset:
     def _get_characters_split_points(self, idx):
         if idx in self.split_points:
             return self.split_points[idx]
-        img = full_data_set.load_image(LINES_REMOVED_BW_IMAGES, self.user_id)
-        line = normalized_line(img.get_line(idx))
+        line = self._get_normalized_line(LINES_REMOVED_BW_IMAGES, idx)
         binary = np.where(line > 30, 1, 0).astype('uint8')
         rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
         dilation = cv2.dilate(binary, rect_kernel, iterations=1)
@@ -140,6 +133,14 @@ class UserDataset:
         self.split_points[idx] = sorted(split_points, key=lambda tup: tup[0])
         # print( self.split_points[idx])
         return self.split_points[idx]
+
+    def _get_normalized_line(self, img_path, line_idx):
+        if img_path not in self.normalized_lines:
+            self.normalized_lines[img_path] = {}
+        if line_idx not in self.normalized_lines:
+            user_file = full_data_set.load_image(img_path, self.user_id)
+            self.normalized_lines[img_path][line_idx] = normalized_line(user_file.get_line(line_idx))
+        return self.normalized_lines[img_path][line_idx]
 
     ############# ______________________ NOT NEEEDED ANY MORE ! ______________________ #############
     def DEP_get_characters_split_points(self, idx):

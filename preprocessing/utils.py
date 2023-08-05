@@ -40,14 +40,14 @@ def normalized_line(line_data):
     return padded_array
 
 
-def select_train_validation_lines(user_image, train_split=0.8):
+def select_train_validation_lines(user_image, train_split, shuffle):
     rows = []
     for i, line in enumerate(user_image.get_all_lines()):
         idx = i + 1
         if not user_image.is_test_line(idx) and not is_empty_line(line):
             rows.append(idx)
-
-    random.shuffle(rows)
+    if shuffle:
+        random.shuffle(rows)
     split_idx = int(len(rows) * train_split)
     # print((rows[0:split_idx], rows[split_idx:]))
     return (rows[0:split_idx], rows[split_idx:])
