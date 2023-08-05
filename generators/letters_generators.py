@@ -10,7 +10,7 @@ import numpy as np
 class BaseLetterGenerator(Sequence):
     MAX_USERS_PER_CHUNK = 10
 
-    def __init__(self, mode, user_ids, load_types, options: ModelOptions):
+    def __init__(self, mode, user_ids, options: ModelOptions, load_types):
         self.options = options
         self.all_user_ids = [i for i in user_ids]
         self.id_to_class = {user_id: i for i, user_id in enumerate(user_ids)}
@@ -19,25 +19,27 @@ class BaseLetterGenerator(Sequence):
         self.random_shuffle_amount = options.random_shuffle_amount
         self.users_ds = {}
         self.generators = {}
-        self.mode = mode
-        self.load_types = load_types
 
         # generator settings.
-        self.load_types = ALLOWED_TYPES
+        self.mode = mode
+        self.load_types = load_types
         self.train_split = 0.8
         self.shuffle = True
+
+        self.select_users_chunk()
 
     def __len__(self):
         return self.options.max_embedding_samples // self.options.batch_size
 
     def select_users_chunk(self):
-        self.user_ids = random.sample(self.all_user_ids, self.MAX_USERS_PER_CHUNK)
+        chunk_size = min(len(self.all_user_ids), self.MAX_USERS_PER_CHUNK)
+        print(f"select_users_chunk {chunk_size} out of {len(self.all_user_ids)} ")
+        self.user_ids = random.sample(self.all_user_ids, chunk_size)
         print(f"selected user_ids {self.user_ids}")
 
     def on_epoch_end(self):
         self.select_users_chunk()
         self.generators = {}
-
 
     def get_user_ds(self, user_id):
         if user_id not in self.users_ds:
@@ -52,9 +54,15 @@ class BaseLetterGenerator(Sequence):
             # print(f"new generator for {user_id} anchor{is_anchor}")
             uds = self.get_user_ds(user_id)
             self.generators[key] = uds.random_letters_generator(mode=self.mode, target_size=self.input_shape,
-                                                                original_only=is_anchor,
+                                                                allowed_types=self.load_types,
                                                                 random_shuffle_amount=self.random_shuffle_amount)
         return self.generators[key]
+
+    def set_train_split(self, train_split):
+        self.train_split = train_split
+
+    def set_shuffle(self, shuffle):
+        self.shuffle = shuffle
 
 
 class LettersGenerator(BaseLetterGenerator):
@@ -96,9 +104,8 @@ class LettersGenerator(BaseLetterGenerator):
 class TripletsGenerator(BaseLetterGenerator):
     def __init__(self, mode, user_ids, options: ModelOptions):
         super().__init__(mode, user_ids, options, EMBEDDING_TYPES)
-        super().load_types = EMBEDDING_TYPES
-        super().train_split = 1  # it should iterate all rows
-        super().shuffle = False
+        self.set_train_split(1)  # it should iterate all rows
+        self.set_shuffle(False)
 
     def __len__(self):
         lines = 20
@@ -113,11 +120,12 @@ class TripletsGenerator(BaseLetterGenerator):
     def __getitem__(self, index):
         anchors, positives, negatives = [], [], []
         for _ in range(self.options.batch_size):
+            #print(f"__getitem__ {2} out of {len(self.user_ids)} ")
             positive_user, negative_user_id = random.sample(self.user_ids, 2)
             # print(f"TripletsGenerator __getitem__ {positive_user} {negative_user_id} " )
             for triplet in self.get_triplets(positive_user, negative_user_id):
-
                 if triplet is None:
+                    #print(f"__getitem__ {2} out of {len(self.user_ids)} ")
                     positive_user, negative_user_id = random.sample(self.user_ids, 2)
                     continue
                 anchor, positive, negative = triplet
@@ -131,8 +139,9 @@ class TripletsGenerator(BaseLetterGenerator):
     def get_triplets(self, positive_user, negative_user_id):
         anc_letter, img_path, line_idx, split_index = next(self.get_letters_generator(positive_user, True))
         uds = self.get_user_ds(positive_user)
-        filtered = list(filter(lambda im_type: im_type != img_path, ALLOWED_TYPES))
-        img_path = random.choice(filtered)
+        filtered = list(filter(lambda im_type: im_type != img_path, self.load_types))
+        if len(filtered)>0:
+            img_path = random.choice(filtered)
         positive_letter = uds.get_letter(img_path, line_idx, split_index, self.input_shape)
         negative_letter, _, _, _ = next(self.get_letters_generator(negative_user_id, False))
         if anc_letter is not None and positive_letter is not None and negative_letter is not None:

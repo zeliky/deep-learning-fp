@@ -18,7 +18,7 @@ class UserDataset:
         self.min_width = 20
         self.min_colored_pixels = 500 * 255
 
-    def warmup(self, load_types=ALLOWED_TYPES, train_split=0.8, shuffle=True):
+    def warmup(self, load_types, train_split=0.8, shuffle=True):
         e = ThreadPoolExecutor(max_workers=len(load_types))
         futures = [e.submit(full_data_set.load_image, t, self.user_id) for t in load_types]
         results = [f.result() for f in futures]
@@ -62,7 +62,8 @@ class UserDataset:
             lines = self._get_lines_ids_set(mode)
             if sample_from_lines_amount is None:
                 sample_from_lines_amount = random.randint(1, len(lines) - 1)
-            selected_lines = random.sample(lines, sample_from_lines_amount)
+            #print(f"random_line_generator {sample_from_lines_amount} out of {len(lines)} ")
+            selected_lines = random.sample(lines, min(sample_from_lines_amount,len(lines)))
             if sequence_length is None:
                 sequence_length = random.randint(int(0.3 * max_sequence_length), max_sequence_length)
             sequence = []
@@ -78,10 +79,9 @@ class UserDataset:
                 sequence.append(np_img)
             yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
-    def random_letters_generator(self, mode, target_size, random_shuffle_amount=1, original_only=False):
+    def random_letters_generator(self, mode, target_size, random_shuffle_amount=1, allowed_types=ALLOWED_TYPES):
         while True:
-            types = ALLOWED_TYPES if not original_only else [ORIGINAL_IMAGES]
-            img_path = random.choice(types)
+            img_path = random.choice(allowed_types)
             lines = self._get_lines_ids_set(mode)
             line_idx = random.choice(lines)
             line = self._get_normalized_line(img_path,line_idx)
