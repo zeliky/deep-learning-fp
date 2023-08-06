@@ -15,7 +15,7 @@ class UserDataset:
         self.normalized_lines = {}
         self.test_line = None
         self.split_points = {}
-        self.min_width = 20
+        self.min_width = 10
         self.min_colored_pixels = 500 * 255
 
     def warmup(self, load_types, train_split=0.8, shuffle=True):
@@ -86,7 +86,10 @@ class UserDataset:
             line_idx = random.choice(lines)
             line = self._get_normalized_line(img_path,line_idx)
             split_points = self._get_characters_split_points(line_idx)
-            split_index = random.randint(0, len(split_points) - 1)
+            points_amount = len(split_points)
+            if points_amount <= 2: #skip lines with too few examples
+               continue
+            split_index = random.randint(0, points_amount - 1)
             (x, y, w, h) = split_points[split_index]
 
             img = line[:, x:x + w]
@@ -141,6 +144,7 @@ class UserDataset:
             user_file = full_data_set.load_image(img_path, self.user_id)
             self.normalized_lines[img_path][line_idx] = normalized_line(user_file.get_line(line_idx))
         return self.normalized_lines[img_path][line_idx]
+
 
     ############# ______________________ NOT NEEEDED ANY MORE ! ______________________ #############
     def DEP_get_characters_split_points(self, idx):

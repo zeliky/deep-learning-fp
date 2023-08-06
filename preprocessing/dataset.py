@@ -35,6 +35,7 @@ class DataSet:
                 im = Image.open(image_path)
                 user_file = UserFile(im, image_metadata)
                 self._cache_image(image_type, user_id, user_file)
+                del im
         return user_file
 
     def image_metadata(self, user_id):

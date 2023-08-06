@@ -5,7 +5,8 @@ from tensorflow.keras.utils import Sequence, to_categorical
 import tensorflow as tf
 import random
 import numpy as np
-
+import gc
+from preprocessing.dataset import DataSet, full_data_set
 
 class BaseLetterGenerator(Sequence):
     MAX_USERS_PER_CHUNK = 10
@@ -38,8 +39,12 @@ class BaseLetterGenerator(Sequence):
         print(f"selected user_ids {self.user_ids}")
 
     def on_epoch_end(self):
+        global full_data_set
+        full_data_set = DataSet()
         self.select_users_chunk()
         self.generators = {}
+        print('running GarbageCollector...')
+        gc.collect()
 
     def get_user_ds(self, user_id):
         if user_id not in self.users_ds:
