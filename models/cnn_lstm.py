@@ -4,10 +4,13 @@ import tensorflow as tf
 from models.options import ModelOptions
 
 
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import LSTM, Dense, TimeDistributed, Input, AdditiveAttention, Flatten, Concatenate
+
 class CnnLstmAttentionModel:
-    def __init__(self, options: ModelOptions, embedding_model, layer_name):
+    def __init__(self, options: ModelOptions, embedding_model):
         self.model_options = options
-        self.embedding_model = self._convert_to_embedding_model(embedding_model, layer_name)
+        self.embedding_model = embedding_model
 
 
 
@@ -29,9 +32,10 @@ class CnnLstmAttentionModel:
 
         # Additive Attention Layer
         attention_output = AdditiveAttention()([lstm_output, lstm_output])
+        combined_output = Concatenate(axis=-1)([lstm_output, attention_output])
 
         # Flattening the output for the Dense layer
-        attention_output_flat = Flatten()(attention_output)
+        attention_output_flat = Flatten()(combined_output)
 
         dense_output = Dense(options['dense_units'], activation='relu')(attention_output_flat)
 
@@ -42,8 +46,5 @@ class CnnLstmAttentionModel:
         model = Model(inputs=input_layer, outputs=output)
 
         return model
-
-    def _convert_to_embedding_model(self, base_model, layer_name):
-        return Model(base_model.inputs, base_model.get_layer(layer_name).output)
 
 

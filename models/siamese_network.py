@@ -12,12 +12,13 @@ class SiameseModel:
         super().__init__()
         self.options = options
         self.alpha = options.alpha
+        input_shape = (model_options.image_height,model_options.image_width ,1)
         self.embedding = embedding
 
     def get_model(self):
       #triplet_input = Input(shape=(self.options.image_height, self.options.image_width, 1), name='triplet_input')
 
-      input_shape = (self.options.image_height, self.options.image_width ,1)
+      input_shape = (model_options.image_height,model_options.image_width ,1)
       anchor_input = Input(input_shape, name="anchor_input")
       positive_input = Input(input_shape, name="positive_input")
       negative_input = Input(input_shape, name="negative_input")

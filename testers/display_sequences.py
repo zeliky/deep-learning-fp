@@ -4,37 +4,32 @@ from preprocessing.utils import *
 from constants.constants import *
 from models.options import ModelOptions
 
-user_ids = [19]
-num_classes = max(user_ids) + 1
+def display_squences():
+  valid_gen = SequenceGenerator(MODE_VALIDATION, user_ids, model_options)
+  train_gen = SequenceGenerator(MODE_TRAIN, user_ids, model_options, valid_gen.set_user_ids)
 
-num_epochs = 3
+  for b, (batch_x, labels) in enumerate(valid_gen):
+    #print(batch_x.shape)
+    print(labels)
+    #for i in range(len(batch_x)):
+    #  print(batch_x[i].shape)
+    #  pass
+      #print(f"line from user: {labels[i]}")
+      #show_sequence(batch_x[i])
+      #if i==5:
+      #  break
+      #for id, letter in enumerate(batch_x):
+      #  print(labels[id])
+      #  image_dots(letter.squeeze()*255)
+      #  if i==10:
+      #    break
 
-model_options = ModelOptions(
-    num_classes=len(user_ids) ,
-    batch_size=100,
-    image_height=50,
-    image_width=50,
-    num_channels=1,
-    max_sequence_length=50,
-    random_shuffle_amount=1
-)
+      #  show_line(letter.squeeze())
+    #break
 
-
-def display_sequences():
-    train_gen = SequenceGenerator(MODE_TRAIN, user_ids, model_options)
-    valid_gen = SequenceGenerator(MODE_VALIDATION, user_ids, model_options)
-
-    train_gen.on_epoch_end()
-    for i, (batch_x, labels) in enumerate(train_gen):
-        for id, sequence in enumerate(batch_x):
-            print(f"line sequence from user {labels[id]}")
-            if id == 5:
-                break
-            show_sequence(sequence * 255)
-
-        # break
-    train_gen.on_epoch_end()
-
-
-full_data_set = DataSet()
-display_sequences()
+  train_gen.on_epoch_end()
+user_ids = range(0,4)
+model_options = ModelOptions()
+#full_data_set = DataSet()
+display_squences()
+display_squences(

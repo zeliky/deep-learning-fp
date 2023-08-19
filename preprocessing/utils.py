@@ -72,16 +72,19 @@ def split_array(arr, split_points):
     return chunks
 
 
-def create_thumbnail(image_array, target_size):
+def create_thumbnail(image_array, target_size, data_augmentation=True):
     height, width = image_array.shape
     target_height, target_width = target_size
     org_image = Image.fromarray(image_array)
 
-    random_scale_w = random.uniform(0.8, 1.2)
-    random_scale_h = random.uniform(0.8, 1.2)
-    random_rotate = random.randint(-15, 15)
-    org_image_rs = org_image.resize((int(width * random_scale_w), int(height * random_scale_h)), Image.NEAREST)
-    org_image_ro = org_image_rs.rotate(random_rotate, Image.NEAREST, expand=True)
+    if data_augmentation:
+        random_scale_w = random.uniform(0.8, 1.2)
+        random_scale_h = random.uniform(0.8, 1.2)
+        random_rotate = random.randint(-15, 15)
+        org_image_rs = org_image.resize((int(width * random_scale_w), int(height * random_scale_h)), Image.NEAREST)
+        org_image_ro = org_image_rs.rotate(random_rotate, Image.NEAREST, expand=True)
+    else:
+        org_image_ro = org_image
 
     canvas = Image.new("L", (height, height), 0)
     if width < height:
@@ -98,8 +101,9 @@ def create_thumbnail(image_array, target_size):
         canvas.paste(resized_image, (left, top))
         del resized_image
 
-    del org_image_rs
-    del org_image_ro
+    if data_augmentation:
+        del org_image_rs
+        del org_image_ro
     del org_image
 
     thumbnail = canvas.resize((target_width, target_height), Image.NEAREST)
@@ -164,3 +168,4 @@ def pad_sequences(max_length, sequences, image_height, image_width, num_channels
                 [sequence, np.zeros((num_padding, image_height, image_width, num_channels))])
         padded_sequences.append(sequence)
     return np.array(padded_sequences)
+

@@ -24,12 +24,17 @@ class EmbeddingModel:
         model.add(MaxPooling2D((3, 3)))
         model.add(Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='SAME', activation='relu'))
         model.add(MaxPooling2D((3, 3)))
-
+        model.add(Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='SAME', activation='relu'))
+        # model.add(Conv2D(64, (1, 1), activation='relu'))
         model.add(Flatten())
-        model.add(Dense(embedding_dim, activation='relu',
-                        kernel_regularizer=l2(1e-3),
-                        kernel_initializer='he_uniform'
-                        ))
+        model.add(Dense(512, activation='relu'))
+        # model.add(Dense(1024, activation='relu',
+        # kernel_regularizer=l2(1e-3),
+        # kernel_initializer='he_uniform'
+        #           ))
+        model.add(Dense(embedding_dim, activation=None,
+                   kernel_regularizer=l2(1e-3),
+                   kernel_initializer='he_uniform'))
         model.add(Lambda(lambda x: K.l2_normalize(x,axis=-1)))
 
         return model
