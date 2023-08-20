@@ -23,3 +23,8 @@ MODE_TRAIN = 'train'
 MODE_VALIDATION = 'validation'
 MODE_TEST = 'test'
 
+TYPES_TO_PATH = {'original': ORIGINAL_IMAGES,
+                 'rotated': ROTATED_IMAGES,
+                 'lines_removed_bw': LINES_REMOVED_BW_IMAGES,
+                 'lines_removed': LINES_REMOVED_IMAGES
+                 }

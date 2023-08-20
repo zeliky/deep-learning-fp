@@ -2,7 +2,7 @@ import random
 from concurrent.futures import ThreadPoolExecutor
 from preprocessing.utils import *
 from preprocessing.dataset import full_data_set
-
+import os, pickle
 import cv2
 
 
@@ -101,8 +101,7 @@ class UserDataset:
                 split_points = self._get_characters_split_points(line_idx)
                 sequence = []
                 seq_len = 0
-                if seq_len==max_sequence_length:
-                  break
+
                 for (x, y, w, h) in split_points:
                     if len(split_points) ==0:
                       #print(f"no split points for user {self.user_id} line:{line_idx}")
@@ -112,7 +111,9 @@ class UserDataset:
                     np_im = np.array(thumbnail, dtype=np.float32) / 255
                     np_img = np_im.reshape(target_size[0], target_size[1], 1)
                     sequence.append(np_img)
-                    seq_len+=1
+                    seq_len += 1
+                    if seq_len == max_sequence_length:
+                        break
                 yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
     def random_line_generator(self, mode, max_sequence_length, target_size, allowed_types=ALLOWED_TYPES):

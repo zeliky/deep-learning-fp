@@ -32,4 +32,3 @@ user_ids = range(0,4)
 model_options = ModelOptions()
 #full_data_set = DataSet()
 display_squences()
-display_squences(
