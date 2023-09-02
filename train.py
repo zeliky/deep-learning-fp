@@ -6,66 +6,54 @@ from models.cnn_lstm import CnnLstmAttentionModel as Model
 from models.simple_cnn import SimpleCnnModel as Model
 from tensorflow import expand_dims
 
-user_ids = [1, 2,3,4,5,6,7,8,9]
-user_ids = [1]
-num_classes = max(user_ids) + 1
+input_shape = (model_options.image_height, model_options.image_width, 1)
+user_ids=range(0,50)
+#user_ids=range(0,10)
+model_options = ModelOptions()
+print(model_options)
 
-num_epochs = 3
+model = OneLetterClassifierModel().get_model(num_classes=model_options.num_classes , input_shape=input_shape)
 
-model_options = ModelOptions(
-    num_classes=max(user_ids) + 1,
-    batch_size=100,
-    image_height=50,
-    image_width=50,
-    num_channels=1,
-    max_sequence_length=40,
-    random_shuffle_amount=0
-)
 
-data_generator_collection = DataGeneratorsCollection(options=model_options)
+filepath = MODEL_CHECKPOINT_PATH + "ft-one-etter-lassifier-model-{epoch:02d}-{loss:.2f}.hdf5"
+checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, mode='min')
+callbacks_list = [checkpoint]
 
-train_gen = TrainSequenceGenerator(user_ids, model_options, data_generator_collection)
-valid_gen = ValidationSequenceGenerator(user_ids, model_options, data_generator_collection)
-test_gen = TestSequenceGenerator(user_ids, model_options, data_generator_collection)
-classifier = Model(model_options)
-model = classifier.get_model()
 
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+valid_gen = LettersGenerator(MODE_VALIDATION, user_ids, model_options, model_options.num_classes )
+train_gen = LettersGenerator(MODE_TRAIN, user_ids, model_options, model_options.num_classes)
+
+
+num_epochs = 5
+opt =  Adam(learning_rate=1e-3)
+model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 history = model.fit(train_gen, epochs=num_epochs, batch_size=model_options.batch_size,
-                    validation_data=valid_gen, verbose=1)
+                    validation_data=valid_gen, verbose=1, callbacks=callbacks_list)
 
 
-def sample_inputs(gen):
-    train_gen.on_epoch_end()
-    for i, (batch_x, labels) in enumerate(gen):
-        print(batch_x.shape)
-
-        for id, sequence in enumerate(batch_x):
-            print(f"line sequence from user {np.argmax(labels[id])}")
-            # if id == 1:
-            #    show_sequence(sequence)
-            print(sequence.shape)
-    train_gen.on_epoch_end()
 
 
-"""
-#model = get_model(num_classes=num_classes, input_shape = (225, 4965,3) )
-model = get_model(num_classes=num_classes, input_shape = (25, 25,1) )
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+
+#..............continue training
+
+filepath = MODEL_CHECKPOINT_PATH + "ft-one-letter-classifier-model-{epoch:02d}-{loss:.2f}.hdf5"
+checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, mode='min')
+callbacks_list = [checkpoint]
+
+
+user_ids=[3,4,8]
+
+print(model_options)
+valid_gen = LettersGenerator(MODE_VALIDATION, user_ids, model_options, model_options.num_classes )
+train_gen = LettersGenerator(MODE_TRAIN, user_ids, model_options, model_options.num_classes)
+
+opt =  Adam(learning_rate=1e-4)
+model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 
-
-history = model.fit (train_gen, epochs=num_epochs, batch_size=batch_size,
-                    validation_data=valid_gen ,verbose=1)
-"""
-"""
-for b in range(5):
-  X_batch, Y_batch = traingen.__getitem__()
-  X_batch.shape
-  #for i in range(100,130):
-  #  print(Y_batch[i])
-  #  show_line(X_batch[i])
-  print(Y_batch)
-"""
+num_epochs=3
+model.load_weights(MODEL_CHECKPOINT_PATH+'ft-one-etter-lassifier-model-04-0.09.hdf5')
+history = model.fit(train_gen, epochs=num_epochs,batch_size=model_options.batch_size,
+                   validation_data=valid_gen, verbose=1,callbacks=callbacks_list)

@@ -47,6 +47,13 @@ class UserDataset:
             yield np_img
         return
 
+    def count_possible_options(self, mode):
+        total = 0
+        lines = self._get_lines_ids_set(mode)
+        for line_idx in lines:
+            total += len(self._get_characters_split_points(line_idx))-1
+        return total
+
     def sub_images_base_path(self,ftype, line ):
       path = f"{SUB_IMAGES_PATH}{self.user_id}/{ftype}/{line}/"
       if not os.path.exists(path):
@@ -101,7 +108,8 @@ class UserDataset:
                 split_points = self._get_characters_split_points(line_idx)
                 sequence = []
                 seq_len = 0
-
+                if seq_len == max_sequence_length:
+                  break
                 for (x, y, w, h) in split_points:
                     if len(split_points) ==0:
                       #print(f"no split points for user {self.user_id} line:{line_idx}")
@@ -112,8 +120,6 @@ class UserDataset:
                     np_img = np_im.reshape(target_size[0], target_size[1], 1)
                     sequence.append(np_img)
                     seq_len += 1
-                    if seq_len == max_sequence_length:
-                        break
                 yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
     def random_line_generator(self, mode, max_sequence_length, target_size, allowed_types=ALLOWED_TYPES):
@@ -123,21 +129,41 @@ class UserDataset:
             lines = self._get_lines_ids_set(mode)
 
             sequence_length = random.randint(int(0.7 * max_sequence_length), max_sequence_length)
+            #print(f"random_line_generator sequence_length: {sequence_length}")
             sequence = []
             for _ in range(sequence_length):
                 line_idx = random.choice(lines)
+                #print(f"random_line_generator line_idx: {line_idx}")
                 line = self._get_normalized_line(img_path, line_idx)
                 split_points = self._get_characters_split_points(line_idx)
                 if len(split_points) ==0:
                   #print(f"no split points for user {self.user_id} line:{line_idx}")
                   continue
                 (x, y, w, h) = random.choice(split_points)
+                #print(f"random_line_generator split_points: {x}")
                 img = line[:, x:x + w]
                 thumbnail = create_thumbnail(img, target_size)
                 np_im = np.array(thumbnail, dtype=np.float32) / 255
                 np_img = np_im.reshape(target_size[0], target_size[1], 1)
                 sequence.append(np_img)
             yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
+
+    def valid_letters_generator(self, mode, target_size, allowed_types=ALLOWED_TYPES):
+        lines = self._get_lines_ids_set(mode)
+        for line_idx in lines:
+            for img_path in allowed_types:
+                line = self._get_normalized_line(img_path, line_idx)
+                split_points = self._get_characters_split_points(line_idx)
+                points_amount = len(split_points)
+
+                for split_index in range(0, points_amount - 1):
+                    (x, y, w, h) = split_points[split_index]
+                    img = line[:, x:x + w]
+                    thumbnail = create_thumbnail(img, target_size, data_augmentation=False)
+                    np_im = np.array(thumbnail, dtype=np.float32) / 255
+                    np_img = np_im.reshape(target_size[0], target_size[1], 1)
+                    #print(f"{img_path}: u:{self.user_id} l:{line_idx} x:{x}-{x+w}")
+                    yield np_img, img_path, line_idx, split_index
 
     def random_letters_generator(self, mode, target_size, random_shuffle_amount=1, allowed_types=ALLOWED_TYPES):
         while True:

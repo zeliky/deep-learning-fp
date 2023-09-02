@@ -78,8 +78,8 @@ def create_thumbnail(image_array, target_size, data_augmentation=True):
     org_image = Image.fromarray(image_array)
 
     if data_augmentation:
-        random_scale_w = random.uniform(0.8, 1.2)
-        random_scale_h = random.uniform(0.8, 1.2)
+        random_scale_w = random.uniform(0.75, 1.25)
+        random_scale_h = random.uniform(0.75, 1.25)
         random_rotate = random.randint(-15, 15)
         org_image_rs = org_image.resize((int(width * random_scale_w), int(height * random_scale_h)), Image.NEAREST)
         org_image_ro = org_image_rs.rotate(random_rotate, Image.NEAREST, expand=True)
