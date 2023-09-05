@@ -18,8 +18,11 @@ def image_dots(img_data, threshold=50):
 
 
 def show_line(line_data):
-    image = Image.fromarray(line_data.astype(np.uint8))
-    image.show()
+    plt.clf()
+    plt.figure(figsize=(20, 5))
+    plt.axis('off')
+    plt.imshow(line_data.astype(np.uint8), cmap='gray')
+    plt.show()
 
 
 def is_empty_line(line_data, threshold=5000):
@@ -78,9 +81,9 @@ def create_thumbnail(image_array, target_size, data_augmentation=True):
     org_image = Image.fromarray(image_array)
 
     if data_augmentation:
-        random_scale_w = random.uniform(0.75, 1.25)
-        random_scale_h = random.uniform(0.75, 1.25)
-        random_rotate = random.randint(-15, 15)
+        random_scale_w = random.uniform(0.85, 1.15)
+        random_scale_h = random.uniform(0.85, 1.15)
+        random_rotate = random.randint(-10, 10)
         org_image_rs = org_image.resize((int(width * random_scale_w), int(height * random_scale_h)), Image.NEAREST)
         org_image_ro = org_image_rs.rotate(random_rotate, Image.NEAREST, expand=True)
     else:
@@ -108,6 +111,17 @@ def create_thumbnail(image_array, target_size, data_augmentation=True):
 
     thumbnail = canvas.resize((target_width, target_height), Image.NEAREST)
     return thumbnail
+
+
+def show_strip(the_images):
+    l = len(the_images)
+    plt.clf()
+    fig, axs = plt.subplots(1, l, figsize=(15, 25))
+    for i in range(0, l):
+        img = the_images[i]
+        axs[i].imshow(img, cmap='gray')
+        axs[i].axis('off')
+    plt.show()
 
 
 def show_sequence(the_images):

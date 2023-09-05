@@ -5,12 +5,12 @@ from tensorflow.keras.utils import Sequence, to_categorical
 import tensorflow as tf
 import random
 import numpy as np
-import gc
+import gc, pickle
 from preprocessing.dataset import DataSet, full_data_set
 
 
 class BaseLetterGenerator(Sequence):
-    MAX_USERS_PER_CHUNK = 50
+    MAX_USERS_PER_CHUNK = 200
 
     def __init__(self, mode, user_ids, options: ModelOptions, load_types):
         self.options = options
@@ -61,6 +61,9 @@ class BaseLetterGenerator(Sequence):
             uds.warmup(self.load_types, self.train_split, self.shuffle)
             self.users_ds[user_id] = uds
         return self.users_ds[user_id]
+    def remove_user_ds(self,user_id):
+        if user_id in self.users_ds:
+            del self.users_ds[user_id]
 
     def get_letters_generator(self, user_id, is_anchor=False):
         key = f"anc{user_id}" if is_anchor else str(user_id)
@@ -82,14 +85,6 @@ class BaseLetterGenerator(Sequence):
     def set_shuffle(self, shuffle):
         self.shuffle = shuffle
 
-
-class LettersGenerator(BaseLetterGenerator):
-    def __init__(self, mode, user_ids, options: ModelOptions, total_users):
-        allowed_types = self.get_allowed_types(mode)
-
-        super().__init__(mode, user_ids, options, allowed_types)
-        self.total_users = total_users
-
     def get_allowed_types(self, mode=None):
         if mode is None:
             mode = self.mode
@@ -99,26 +94,33 @@ class LettersGenerator(BaseLetterGenerator):
         elif mode == MODE_TEST or mode == MODE_VALIDATION:
             allowed_types = VALIDATE_TYPES
         else:
-            allowed_types = ALLOWED_TYPES
+            allowed_types = TRAIN_TYPES
 
         return allowed_types
 
-    def __len__(self):
-        if self.mode == MODE_TEST:
-            total_batches = self._exact_len() // self.options.batch_size
-        else:
-            lines = 20
-            # lines = 10
-            users = len(self.user_ids)
-            letters_per_line = self.options.max_sequence_length
-            # letters =30
-            types = len(self.load_types)
-            random_shuffle_amount = 10
-            total_batches = (
-                                        types * lines * users * letters_per_line * random_shuffle_amount) // self.options.batch_size
-            # print(f"LettersGenerator __len__ {total_batches}")
+class LettersGenerator(BaseLetterGenerator):
+    def __init__(self, mode, user_ids, options: ModelOptions, total_users):
+        allowed_types = self.get_allowed_types(mode)
 
-        return total_batches + 1 if total_batches else 1
+        super().__init__(mode, user_ids, options, allowed_types)
+        self.total_users = total_users
+
+    def __len__(self):
+        if self.mode == MODE_TEST or self.mode==MODE_VALIDATION:
+            total_batches =  self._exact_len() // self.options.batch_size
+        else:
+          #lines = 20
+          lines = 15
+          users = len(self.user_ids)
+          #letters_per_line = self.options.max_sequence_length
+          letters_per_line =30
+          types = len(self.load_types)
+          random_shuffle_amount = 5
+          total_batches = (types * lines * users * letters_per_line* random_shuffle_amount) // self.options.batch_size
+          # print(f"LettersGenerator __len__ {total_batches}")
+
+
+        return total_batches+1 if total_batches  else 1
 
     def __getitem__(self, index):
         batch, labels = [], []
@@ -148,6 +150,7 @@ class LettersGenerator(BaseLetterGenerator):
         for user_id in self.user_ids:
             uds = self.get_user_ds(user_id)
             total += uds.count_possible_options(self.mode)
+        print(total)
         return total
 
 
@@ -200,9 +203,9 @@ class TripletsGenerator(BaseLetterGenerator):
 
 class SequenceGenerator(BaseLetterGenerator):
     def __init__(self, mode, user_ids, options: ModelOptions):
-
-        super().__init__(mode, user_ids, options, CLASSIFICATION_TYPES)
-        self.set_train_split(0.7)
+        allowed_types = self.get_allowed_types(mode)
+        super().__init__(mode, user_ids, options, allowed_types)
+        self.set_train_split(0.8)
         self.set_shuffle(True)
 
     def on_epoch_end(self):
@@ -219,27 +222,44 @@ class SequenceGenerator(BaseLetterGenerator):
                                                                      allowed_types=self.load_types)
             else:
                 # replace to valid_line_generator
-                self.generators[user_id] = uds.random_line_generator(mode=self.mode,
-                                                                     max_sequence_length=self.options.max_sequence_length,
-                                                                     target_size=self.input_shape,
-                                                                     allowed_types=self.load_types)
+                self.generators[user_id] = uds.valid_line_generator(mode=self.mode,
+                                                                    max_sequence_length=self.options.max_sequence_length,
+                                                                    target_size=self.input_shape,
+                                                                    allowed_types=self.load_types)
         return self.generators[user_id]
 
     def __len__(self):
-        lines = 20
-        users = len(self.user_ids)
-        random_shuffle_amount = self.options.random_shuffle_amount
-        types = len(ALLOWED_TYPES)
-        total_batches = (types * lines * users * random_shuffle_amount) // self.options.batch_size
-        if total_batches:
-            total_batches += 1
-        return total_batches
+        if self.mode == MODE_TEST:
+            total_batches = self._exact_len() // self.options.batch_size
+        else:
+            lines = 20
+            users = len(self.user_ids)
+            random_shuffle_amount = self.options.random_shuffle_amount
+            types = len(ALLOWED_TYPES)
+            total_batches = (types * lines * users * random_shuffle_amount) // self.options.batch_size
+        return total_batches + 1 if total_batches else 1
 
     def __getitem__(self, index):
         batch, labels = [], []
-        for s in range(self.options.batch_size):
-            user_id = random.choice(self.user_ids)
-            sequence = next(self.get_sequence_generator(user_id))
-            batch.append(sequence)
-            labels.append(to_categorical(self.id_to_class[user_id], num_classes=self.options.num_classes))
+        possible_items = self.options.batch_size if self.mode != MODE_TEST else min(self.options.batch_size,
+                                                                                    self._exact_len())
+        uids = [i for i in self.user_ids]
+        for s in range(possible_items):
+            if len(uids) == 0:
+                break
+            user_id = random.choice(uids)
+            try:
+                sequence = next(self.get_sequence_generator(user_id))
+                batch.append(sequence)
+                labels.append(to_categorical(self.id_to_class[user_id], num_classes=self.options.num_classes))
+            except StopIteration:
+                uids.remove(user_id)
+                self.remove_user_ds(user_id)
         return np.asarray(batch), np.asarray(labels)
+
+    def _exact_len(self):
+        total = 0
+        for user_id in self.user_ids:
+            uds = self.get_user_ds(user_id)
+            total += uds.count_possible_lines(self.mode)
+        return total

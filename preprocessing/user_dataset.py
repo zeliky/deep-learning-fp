@@ -24,7 +24,7 @@ class UserDataset:
         self.min_colored_pixels = 500 * 255
 
     def warmup(self, load_types, train_split=0.8, shuffle=True):
-        e = ThreadPoolExecutor(max_workers=len(load_types))
+        e = ThreadPoolExecutor(max_workers=5) #len(load_types)
         futures = [e.submit(full_data_set.load_image, t, self.user_id) for t in load_types]
         results = [f.result() for f in futures]
         self.split_dataset(train_split, shuffle)
@@ -53,6 +53,10 @@ class UserDataset:
         for line_idx in lines:
             total += len(self._get_characters_split_points(line_idx))-1
         return total
+
+    def count_possible_lines(self, mode):
+        return len(self._get_lines_ids_set(mode))
+
 
     def sub_images_base_path(self,ftype, line ):
       path = f"{SUB_IMAGES_PATH}{self.user_id}/{ftype}/{line}/"
@@ -100,27 +104,30 @@ class UserDataset:
         return pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
     def valid_line_generator(self, mode, max_sequence_length, target_size, allowed_types=ALLOWED_TYPES):
+        #print(f'valid_line_generator start')
         img_path = random.choice(allowed_types)
         lines = self._get_lines_ids_set(mode)
-        while True:
-            for line_idx in lines:
-                line = self._get_normalized_line(img_path, line_idx)
-                split_points = self._get_characters_split_points(line_idx)
-                sequence = []
-                seq_len = 0
+        print(f'valid_line_generator: user {self.user_id} line: {lines}')
+        for line_idx in lines:
+            line = self._get_normalized_line(img_path, line_idx)
+            split_points = self._get_characters_split_points(line_idx)
+            sequence = []
+            if len(split_points) ==0:
+                  print(f"no split points for user {self.user_id} line:{line_idx}")
+                  continue
+            seq_len = 0
+            for (x, y, w, h) in split_points:
                 if seq_len == max_sequence_length:
+                  #print(f"line is longer than  {max_sequence_length} line:{line_idx}")
                   break
-                for (x, y, w, h) in split_points:
-                    if len(split_points) ==0:
-                      #print(f"no split points for user {self.user_id} line:{line_idx}")
-                      continue
-                    img = line[:, x:x + w]
-                    thumbnail = create_thumbnail(img, target_size, data_augmentation=False)
-                    np_im = np.array(thumbnail, dtype=np.float32) / 255
-                    np_img = np_im.reshape(target_size[0], target_size[1], 1)
-                    sequence.append(np_img)
-                    seq_len += 1
-                yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
+                img = line[:, x:x + w]
+                thumbnail = create_thumbnail(img, target_size, data_augmentation=False)
+                np_im = np.array(thumbnail, dtype=np.float32) / 255
+                np_img = np_im.reshape(target_size[0], target_size[1], 1)
+                sequence.append(np_img)
+                seq_len += 1
+            #print(f"pad_sequence  for sequence len:{len(sequence)}")
+            yield pad_sequence(max_sequence_length, sequence, target_size[0], target_size[1], 1)
 
     def random_line_generator(self, mode, max_sequence_length, target_size, allowed_types=ALLOWED_TYPES):
         while True:
@@ -230,3 +237,4 @@ class UserDataset:
             user_file = full_data_set.load_image(img_path, self.user_id)
             self.normalized_lines[img_path][line_idx] = normalized_line(user_file.get_line(line_idx))
         return self.normalized_lines[img_path][line_idx]
+

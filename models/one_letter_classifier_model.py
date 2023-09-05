@@ -23,13 +23,12 @@ class OneLetterClassifierModel:
         model.add(Conv2D(filters=128, kernel_size=(3, 3), padding='SAME', activation='relu', name='conv2d-5'))
         model.add(MaxPooling2D((2, 2), name='last-maxpooling'))
 
-        model.add(Flatten())
+        model.add(Flatten(name='last-flatten'))
         model.add(Dropout(0.2))
         model.add(Dense(512, activation='relu', name='dense_512'))
         model.add(Dropout(0.2))
         model.add(Dense(num_classes, activation='softmax'))
         return model
-
 class OneLetterClassifierModel_v5:
 
     def get_model(self, input_shape, num_classes):

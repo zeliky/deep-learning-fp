@@ -20,6 +20,7 @@ class UserFile:
         return self.data[y_range[0]:y_range[1], :]
 
     def get_test_line_idx(self):
+        #print(f"get_test_line_idx metadata{self.metadata}" )
         for i in range(1, self.metadata.total_lines):
             if self.is_test_line(i):
                 return i

@@ -1,11 +1,9 @@
-from generators.sequence_generators import TrainSequenceGenerator, DataGeneratorsCollection, ValidationSequenceGenerator, \
-    TestSequenceGenerator
+from generators.letters_generators import SequenceGenerator,LettersGenerator
 from models.network_configs import ModelOptions
 from preprocessing.utils import *
-from models.cnn_lstm import CnnLstmAttentionModel as Model
-from models.simple_cnn import SimpleCnnModel as Model
-from tensorflow import expand_dims
-
+from models.options import ModelOptions
+from models.one_letter_classifier_model import OneLetterClassifierModel
+from tensorflow.k
 input_shape = (model_options.image_height, model_options.image_width, 1)
 user_ids=range(0,50)
 #user_ids=range(0,10)
